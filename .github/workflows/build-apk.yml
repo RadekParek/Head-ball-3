@@ -54,6 +54,9 @@ jobs:
       - name: Run headless gameplay checks
         run: npm run smoke
 
+      - name: Run long-form soak test
+        run: npm run soak
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:

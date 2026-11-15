@@ -9,7 +9,8 @@
     "shot": "node scripts/screenshot.js",
     "apk": "npm run build && bash android/build.sh",
     "serve": "node scripts/serve.js",
-    "icon": "python3 scripts/make_icon.py"
+    "icon": "python3 scripts/make_icon.py",
+    "soak": "node scripts/soak.js"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.1.1",

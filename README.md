@@ -68,7 +68,7 @@ layout in *Settings → Flip controls*.
 
 | Metric | Value |
 | --- | --- |
-| Shipped game JS | ≈162 kB minified (one file) |
+| Shipped game JS | ≈166 kB minified (one file) |
 | HTML + CSS | 606 B + 319 B |
 | Audio/image assets | 0 files |
 | APK | a few hundred kB, no native libs |
@@ -76,6 +76,8 @@ layout in *Settings → Flip controls*.
 Rendering is a single 2D canvas with cached offscreen stadium layers, a fixed
 120 Hz physics step, object pools for particles and no per-frame allocation in
 the hot loop. All art is cached at load time, so the frame cost stays flat.
+The APK contains one dex file and three web assets — no native libraries, no
+fonts, no images, no audio.
 
 ## Build the APK
 
@@ -124,6 +126,7 @@ itself.
 npm run build     # minify src/js/*.js into dist/assets/game.js
 npm run smoke     # 95 headless gameplay assertions (boot, menus, match,
                   # goals, powers, local layout, penalty, save/load)
+npm run soak      # full matches on every AI tier + penalty sudden death
 npm run shot      # render 30 QA screenshots at 16:9 and 20:9
 npm run apk       # build the Android package
 ```
@@ -144,8 +147,13 @@ scripts/            build, headless harness, smoke tests, screenshots, icon
 android/            manifest, resources, one Activity, build.sh
 ```
 
+The match clock is continuous: kick-off, celebrations and resets all consume
+the 90 seconds, so a match never drags past its advertised length.
+
 Headless tests run the real minified bundle inside a Node canvas, so a broken
-build fails CI before an APK is produced.
+build fails CI before an APK is produced. The suite covers boot, every menu and
+tab, an animated match, goal detection, all 20 powers, the mirrored local-1v1
+layout, penalty sudden death, progression rewards and a save round-trip.
 
 ## License and attribution
 

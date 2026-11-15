@@ -127,6 +127,11 @@
   });
 
   /* ---- shared widgets ---- */
+  function luminance(hex) {
+    var n = parseInt(hex.replace('#', ''), 16);
+    var r = ((n >> 16) & 255) / 255, gg = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    return 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+  }
   UI.button = function (id, r, label, o) {
     o = o || {};
     var g = UI.g, x = r.x + UI._offsetX, y = r.y + UI._offsetY;
@@ -146,7 +151,10 @@
       Art.icon(g, o.icon, tx, ty - (label ? r.h * 0.14 : 0), o.iconSize || Math.min(r.w, r.h) * 0.5, o.primary ? C.ink : '#ffffff');
       if (label) Art.text(g, label, tx, y + lift + r.h - 15, Math.min(14, r.h * 0.2), o.primary ? C.ink : C.paper, 'center', '900', { shadow: false });
     } else if (label) {
-      Art.text(g, label, tx, ty, o.fontSize || Math.min(22, r.h * 0.36), o.primary ? C.ink : C.paper, 'center', '900', { shadow: o.primary, maxWidth: r.w - 12 });
+      /* On a light primary fill the label must be ink. Judge the actual fill
+         brightness: silver/teal/cyan primaries are far too light for white. */
+      var inkLabel = o.primary ? (luminance(col) > 0.42 ? C.ink : C.paper) : C.paper;
+      Art.text(g, label, tx, ty, o.fontSize || Math.min(22, r.h * 0.36), inkLabel, 'center', '900', { shadow: o.primary && inkLabel === C.paper, maxWidth: r.w - 12 });
     }
     if (o.badge) { Art.circle(g, x + r.w - 10, y + 10, 13, C.red); Art.text(g, o.badge, x + r.w - 10, y + 10, 12, '#ffffff', 'center', '900', { shadow: false }); }
     g.restore();

@@ -57,6 +57,10 @@
   Data.rarity = function (c) { return RARITY[c.tier]; };
 
   /* ---------------- Gear ---------------- */
+  /* Gear icons are drawn on dark panels, so the darkest kit is excluded and a
+     bright tier accent is used instead - an icon must never vanish. */
+  var GEAR_KITS = ['#ff6f6f', '#5aa2ff', '#ffd75e', '#2fe0b6', '#a97cff', '#ff8f52',
+    '#5ee07f', '#ff86c2', '#4ce8f2', '#7fd0ff'];
   var GEAR_STYLES = ['cap', 'beanie', 'crown', 'headband', 'visor', 'chef', 'halo', 'straw',
     'shades', 'round', 'monocle', 'sports', 'threeD', 'star',
     'stripes', 'plain', 'hoops', 'sash', 'retro', 'galaxy',
@@ -80,7 +84,7 @@
         if (tier === 2) { var k2 = ['speed', 'jump', 'shot', 'size'][(si + j + 2) % 4]; bonus[k2] = 2 + r.int(0, 2); }
         list.push({
           id: id++, slot: slot.key, slotLabel: slot.label, name: slot.names[j], style: GEAR_STYLES[id - 1],
-          tier: tier, color: r.pick(KITS), bonus: bonus,
+          tier: tier, color: r.pick(GEAR_KITS), bonus: bonus,
           price: 350 + tier * 900 + r.int(0, 300), fans: tier * 1800
         });
       }

@@ -48,8 +48,8 @@
   function lockedOverlay(g, r, text) {
     g.save(); Art.rr(g, r.x, r.y, r.w, r.h, 14); g.clip();
     g.fillStyle = 'rgba(4,10,22,0.62)'; g.fillRect(r.x, r.y, r.w, r.h);
-    Art.icon(g, 'lock', r.x + r.w / 2, r.y + r.h / 2 - 10, 26, C.mist);
-    if (text) Art.text(g, text, r.x + r.w / 2, r.y + r.h - 16, 11, C.mist, 'center', '800', { shadow: false });
+    Art.icon(g, 'lock', r.x + r.w / 2, r.y + r.h / 2 - 4, 26, C.mist);
+    if (text) Art.text(g, text, r.x + r.w / 2, r.y + r.h / 2 + 24, 11, C.mist, 'center', '900', { shadow: false });
     g.restore();
   }
 
@@ -200,7 +200,7 @@
   /* ---------------- League ---------------- */
   S.league = {
     draw: function (g) {
-      UI.menuBackground(g); UI.profileBar(g); UI.header(g, 'CAREER LEAGUE', 'Win 12 points to advance a bracket. Every 15 brackets promotes you.');
+      UI.menuBackground(g); UI.profileBar(g); UI.header(g, 'CAREER LEAGUE', 'Win 12 points to clear a bracket. Three brackets promote you to the next league.');
       var w = HB.V.w, h = HB.V.h, pw = Math.min(w - 120, 940), px = (w - pw) / 2, s = Save.data;
       var lg = Data.leagues[s.league];
       Art.panel(g, px, 190, pw, 300, 22, { fill: 'rgba(9,22,46,0.85)', stroke: U.alpha(lg.color, 0.6), gradient: true, fill2: 'rgba(8,18,38,0.9)' });
@@ -342,13 +342,16 @@
           var it = items[i], y = cy + 12 + i * (rowH + 8);
           var owned = Save.data.ownedGear.indexOf(it.id) >= 0, equipped = Save.data.gear[it.slot] === it.id;
           Art.fillRR(gg, px + 8, y, pw - 16, rowH, 14, equipped ? U.alpha(C.gold, 0.22) : 'rgba(255,255,255,0.05)');
-          Art.icon(gg, it.slot === 'hat' ? 'hat' : it.slot === 'glasses' ? 'glasses' : it.slot === 'jersey' ? 'jersey' : it.slot === 'boots' ? 'boot' : 'ball', px + 40, y + 32, 30, it.color);
+          Art.circle(gg, px + 40, y + 32, 22, U.alpha(it.color, 0.18));
+          gg.strokeStyle = U.alpha(it.color, 0.5); gg.lineWidth = 1.5;
+          gg.beginPath(); gg.arc(px + 40, y + 32, 22, 0, Math.PI * 2); gg.stroke();
+          Art.icon(gg, it.slot === 'hat' ? 'hat' : it.slot === 'glasses' ? 'glasses' : it.slot === 'jersey' ? 'jersey' : it.slot === 'boots' ? 'boot' : 'ball', px + 40, y + 32, 28, it.color);
           Art.text(gg, it.name + '  ' + it.slotLabel, px + 72, y + 22, 16, C.paper, 'left', '900');
           var bonus = [];
           for (var k in it.bonus) bonus.push('+' + it.bonus[k] + ' ' + k.toUpperCase());
           Art.text(gg, bonus.join('  '), px + 72, y + 44, 12, C.cyan, 'left', '800', { shadow: false });
-          Art.text(gg, equipped ? 'EQUIPPED' : owned ? 'OWNED' : U.fmtNum(it.price) + ' COINS', px + pw - 130, y + 32, 14, equipped ? C.gold : owned ? C.teal : C.paper, 'right', '900');
-          UI.region('locker.gear.' + i, { x: px + 8, y: y, w: pw - 16, h: rowH }, (function (id) { return function () {
+          Art.text(gg, equipped ? 'EQUIPPED' : owned ? 'OWNED' : U.fmtNum(it.price) + ' COINS', px + pw - 48, y + 32, 14, equipped ? C.gold : owned ? C.teal : C.paper, 'right', '900');
+          UI.region('locker.gear.' + i, { x: px + 8, y: y, w: pw - 32, h: rowH }, (function (id) { return function () {
             var r = Meta.equipGear(id); if (r && r.msg) HB.toast(r.msg, r.ok ? 'info' : 'error'); Audio.play('select'); Save.flush();
           }; })(it.id), 'button');
         }
@@ -363,8 +366,8 @@
         Art.icon(g, def.icon, ex + 56, cy + 48, 32, def.color);
         Art.text(g, 'SLOT ' + (e + 1), ex + 56, cy + 82, 11, C.paper, 'center', '900', { shadow: false });
       }
-      var listY = cy + 108, listH = chh - 108, cols = pw > 900 ? 4 : 3, gap = 10;
-      var cw = (pw - 24 - (cols - 1) * gap) / cols, ch = 108;
+      var listY = cy + 104, listH = chh - 104, cols = pw > 900 ? 4 : 3, gap = 10;
+      var cw = (pw - 40 - (cols - 1) * gap) / cols, ch = 104;
       var rows = Math.ceil(Data.powers.length / cols), contentH = rows * (ch + gap) + 16;
       UI.scroll('locker.scroll', { x: px, y: listY, w: pw, h: listH }, contentH, function (gg, top, bottom) {
         var r0 = Math.max(0, Math.floor(top / (ch + gap)) - 1), r1 = Math.min(rows, Math.ceil(bottom / (ch + gap)) + 1);
@@ -377,8 +380,8 @@
           Art.icon(gg, p.icon, x + 32, y + 34, 32, p.color);
           Art.text(gg, p.name, x + 58, y + 26, 14, C.paper, 'left', '900', { maxWidth: cw - 66 });
           Art.text(gg, p.desc, x + 12, y + 56, 11, U.alpha(C.mist, 0.85), 'left', '800', { maxWidth: cw - 24 });
-          Art.text(gg, unlocked ? 'LV ' + lvl + '  •  ' + p.cost + ' ENERGY' : U.fmtNum(p.fans) + ' FANS', x + 12, y + 88, 11, unlocked ? C.gold : C.mist, 'left', '900', { shadow: false });
-          if (!unlocked) lockedOverlay(gg, { x: x, y: y, w: cw, h: ch }, null);
+          if (unlocked) Art.text(gg, 'LV ' + lvl + '  •  ' + p.cost + ' ENERGY', x + 12, y + 88, 11, C.gold, 'left', '900', { shadow: false });
+          if (!unlocked) lockedOverlay(gg, { x: x, y: y, w: cw, h: ch }, U.fmtNum(p.fans) + ' FANS');
           UI.region('locker.pow.' + i, { x: x, y: y, w: cw, h: ch }, (function (id) { return function () { self.powerPick = id; Audio.play('select'); }; })(p.id), 'button');
         }
       });
@@ -530,7 +533,7 @@
           Art.text(g, m.text, px + 82, y + 26, 18, C.paper, 'left', '900');
           Art.fillRR(g, px + 82, y + 50, pw - 340, 12, 6, 'rgba(255,255,255,0.12)');
           Art.fillRR(g, px + 82, y + 50, (pw - 340) * U.clamp(p / m.goal, 0, 1), 12, 6, done ? C.teal : C.cyan);
-          Art.text(g, Math.min(p, m.goal) + ' / ' + m.goal, px + 82 + (pw - 340) / 2, y + 56, 10, C.ink, 'center', '900', { shadow: false });
+          Art.text(g, Math.min(p, m.goal) + ' / ' + m.goal + '  •  +' + m.coins + ' COINS', px + 82 + (pw - 340) / 2, y + 34, 12, U.alpha(C.mist, 0.9), 'center', '800', { shadow: false });
           var label = claimed ? 'CLAIMED' : done ? 'CLAIM  +' + m.coins : 'IN PROGRESS';
           Art.fillRR(g, px + pw - 236, y + 22, 210, 40, 12, claimed ? 'rgba(255,255,255,0.06)' : done ? U.alpha(C.gold, 0.9) : 'rgba(255,255,255,0.06)');
           Art.text(g, label, px + pw - 131, y + 42, 14, done && !claimed ? C.ink : C.mist, 'center', '900', { shadow: false });
