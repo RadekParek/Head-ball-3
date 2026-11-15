@@ -4,7 +4,7 @@
   'use strict';
 
   HB.VERSION = '1.0.0';
-  HB.WORLD = { w: 1280, h: 720, ground: 596, goalW: 108, goalH: 205 };
+  HB.WORLD = { w: 1280, h: 720, ground: 596, goalW: 156, goalH: 258 };
   HB.clock = 0;                 // seconds since boot (animation time)
   HB.V = { w: 1280, h: 720, dpr: 1, aspect: 16 / 9, scale: 1, ox: 0, oy: 0, worldScale: 1, worldX: 0, worldY: 0 };
 

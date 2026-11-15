@@ -6,10 +6,16 @@
   var U = HB.U, C = HB.C, W = HB.WORLD, Art = HB.Art, Audio = HB.Audio, Data = HB.Data, Meta = HB.Meta;
   var STEP = 1 / 120, GRAV = 1520, PGRAV = 1980, BASE_R = 21;
 
+  /* Ground contact uses a small tolerance. Landing exactly on p.y === W.ground
+     used to leave onGround false for ever, which silently disabled jumping. */
   function clampPlayer(p) {
     p.x = U.clamp(p.x, 56, W.w - 56);
-    if (p.y > W.ground) { p.y = W.ground; if (p.vy > 0) { p.vy = 0; if (!p.onGround) Audio.play('land'); } p.onGround = true; }
-    else p.onGround = false;
+    if (p.y >= W.ground - 0.5) {
+      if (!p.onGround && p.vy > 220) Audio.play('land');
+      if (p.y > W.ground) p.y = W.ground;
+      if (p.vy > 0) p.vy = 0;
+      p.onGround = true;
+    } else p.onGround = false;
   }
 
   function makePlayer(side, cfg, charId, kit) {
@@ -234,6 +240,7 @@
     this.flash = U.damp(this.flash, 0, 7, dt);
     this.slow = U.damp(this.slow, 1, 3, dt);
     this.updateParticles(dt);
+    if (this.ripples) { for (var ri = this.ripples.length - 1; ri >= 0; ri--) if (this.t - this.ripples[ri].t > 1.1) this.ripples.splice(ri, 1); }
     for (var i = this.effects.length - 1; i >= 0; i--) if (this.effects[i].until <= this.t) this.effects.splice(i, 1);
     /* One continuous clock from the opening whistle to the final whistle.
        Celebrations and kick-off resets burn match time just like the original
@@ -256,6 +263,7 @@
         this.message = this.goldenActive ? 'GOLDEN GOAL!' : 'KICK OFF!'; this.messageUntil = this.t + 1.1;
       }
     } else if (this.state === 'goal') {
+      this.celebrateBall(dt);
       this.goalTimer -= dt;
       if (this.goalTimer <= 0) {
         if (this.goldenActive) { this.end('golden'); return; }
@@ -281,26 +289,32 @@
       if (p.flags.frozen || p.stun > 0) continue;
       if (e.jump) this.jump(p);
       if (e.dash) this.dash(p);
-      if (e.kickDown && !p.charging) { p.charging = 'low'; p.shotCharge = 0; Audio.play('charge'); }
+      /* Head Ball 2 style: KICK charges while held. Quick tap drives the ball
+         along the ground, a held shot lifts it high. LOB is a separate button
+         when the extra control row is enabled. */
+      if (e.kickDown) { p.charging = 'kick'; p.shotCharge = 0; Audio.play('charge'); }
       if (e.lobDown && !p.charging) { p.charging = 'lob'; p.shotCharge = 0; Audio.play('charge'); }
-      if (e.kick && p.charging === 'low') { this.fireShot(p, 'low', p.shotCharge); p.charging = null; p.shotCharge = 0; }
+      if (e.kick && p.charging === 'kick') {
+        var c = p.shotCharge;
+        this.fireShot(p, c > 0.42 ? 'high' : 'low', c); p.charging = null; p.shotCharge = 0;
+      }
       if (e.lob && p.charging === 'lob') { this.fireShot(p, 'lob', p.shotCharge); p.charging = null; p.shotCharge = 0; }
     }
   };
   Match.prototype.jump = function (p) {
     if (p.onGround) {
-      p.vy = -(570 + p.stats.jump * 2.7) * (p.flags.turbo ? 1.14 : 1);
+      p.vy = -(660 + p.stats.jump * 2.9) * (p.flags.turbo ? 1.12 : 1);
       p.onGround = false; p.airJump = true;
-      Audio.play('jump'); this.burst(p.x, p.y, 7, '#ffffff', 110);
+      Audio.play('jump'); this.burst(p.x, p.y - 4, 8, '#ffffff', 120);
     } else if (p.airJump) {
-      p.vy = -(430 + p.stats.jump * 1.6); p.airJump = false;
-      Audio.play('dash'); this.burst(p.x, p.y - 60, 14, C.cyan, 180);
+      p.vy = -(520 + p.stats.jump * 1.8); p.airJump = false;
+      Audio.play('dash'); this.burst(p.x, p.y - 60, 14, C.cyan, 190);
     }
   };
   Match.prototype.dash = function (p) {
     if (p.dashCd > 0) return;
-    p.dashCd = 1.45; p.slide = 0.26;
-    p.vx = p.facing * (560 + p.stats.speed * 2.2);
+    p.dashCd = 1.1; p.slide = 0.26;
+    p.vx = p.facing * (680 + p.stats.speed * 2.6);
     if (p.onGround) p.vy = -110;
     Audio.play('dash'); this.burst(p.x, p.y - 12, 10, p.kit, 180);
     HB.Input.vibrate(12);
@@ -318,8 +332,8 @@
     var power = (520 + p.stats.shot * 5.4) * (0.58 + charge * 0.82) * rocket * combo;
     if (p.flags.shrink) power *= 0.82;
     var low = type === 'low';
-    b.vx = dir * power * (low ? 1 : 0.83) + p.vx * 0.22;
-    b.vy = low ? -(190 + charge * 130) : -(520 + charge * 240);
+    b.vx = dir * power * (low ? 1 : 0.86) + p.vx * 0.22;
+    b.vy = low ? -(150 + charge * 110) : -(600 + charge * 300);
     b.spin = (low ? 1 : -1.6) * U.rnd(0.4, 1.2) * (p.facing > 0 ? 1 : -1);
     b.lastTouch = p.side; b.touchCd = 0.08;
     p.kickAnim = 0.26; p.energy = Math.min(100, p.energy + 3);
@@ -416,14 +430,18 @@
     if (p.input.left) dir -= 1;
     if (p.input.right) dir += 1;
     if (p.flags.scramble) dir *= -1;
-    var speed = (255 + p.stats.speed * 2.15) * (p.flags.turbo ? 1.55 : 1) * (p.flags.shrink ? 0.82 : 1);
+    var speed = (330 + p.stats.speed * 3.1) * (p.flags.turbo ? 1.45 : 1) * (p.flags.shrink ? 0.86 : 1);
     if (p.flags.frozen || p.stun > 0) { p.vx = U.damp(p.vx, 0, 12, d); dir = 0; }
     else if (dir) {
-      p.vx += dir * 2900 * d;
-      p.vx = U.clamp(p.vx, -speed, speed);
+      /* Arcade feel: you are at full speed within ~4 frames, and a reversal
+         bites instantly instead of coasting through a slow turn. */
+      var target = dir * speed;
+      var dv = target - p.vx;
+      var accel = (p.vx * dir < 0 ? 13000 : 7800) * d;
+      p.vx += U.clamp(dv, -accel, accel);
       p.facing = dir;
     } else {
-      var fr = p.flags.ice ? 0.985 : p.onGround ? 0.86 : 0.985;
+      var fr = p.flags.ice ? 0.985 : p.onGround ? 0.80 : 0.985;
       p.vx *= Math.pow(fr, d * 60);
       if (Math.abs(p.vx) < 6) p.vx = 0;
     }
@@ -504,11 +522,28 @@
       b.touchCd = 0.075;
       p.ballCd = 0.09;
       p.energy = Math.min(100, p.energy + 5);
-      /* a defensive touch in your own third is a save */
-      var ownThird = p.side === 0 ? b.x < W.w * 0.33 : b.x > W.w * 0.67;
-      if (ownThird && towards === false && Math.abs(b.vx) > 200) {
-        this.stats[p.side].saves++; p.energy = Math.min(100, p.energy + 8);
-        Audio.play('save'); HB.toast('SAVE!', 'info');
+      /* Saves are graded by how close the ball was to going in. A touch while
+         the ball is inside the six-yard box and heading goalwards is a save;
+         within a post's width of the line it is a highlight-reel stop. */
+      var ownGoalX = p.side === 0 ? 0 : W.w;
+      var toGoal = Math.abs(b.x - ownGoalX);
+      var incoming = p.side === 0 ? (b.vx + p.vx * 0) < -60 : b.vx > 60;
+      var goalward = incoming || towards === false;
+      if (goalward && toGoal < 300 && Math.abs(b.vx) > 180) {
+        this.stats[p.side].saves = (this.stats[p.side].saves || 0) + 1; p.energy = Math.min(100, p.energy + 8);
+        var wasNear = b.x - nx * 18;           /* roughly where contact happened */
+        if (toGoal < 86) {
+          /* miracle stop: inside the width of the goal mouth itself */
+          this.stats[p.side].greatSaves = (this.stats[p.side].greatSaves || 0) + 1;
+          this.callout('WHAT A SAVE!', p.side, { big: true, color: p.side === 0 ? C.cyan : C.gold });
+          this.shake = 7; this.flash = 0.22; this.slow = 0.5;
+          this.burst(wasNear, b.y, 26, C.cyan, 340);
+          Audio.play('save'); Audio.cheer(1.1);
+          HB.Input.vibrate(35);
+        } else {
+          this.callout('SAVE!', p.side, { color: p.side === 0 ? C.cyan : C.gold });
+          Audio.play('save');
+        }
       }
       this.burst(b.x, b.y, 5, '#ffffff', 120);
       return;
@@ -520,13 +555,61 @@
     for (var side = 0; side < 2; side++) {
       var boost = this.goalBoost(side), gh = W.goalH * boost, gw = W.goalW * (boost > 1 ? 1.25 : 1);
       var top = gy - gh;
-      var crossed = side === 0 ? b.x < gw + b.r * 0.15 : b.x > W.w - gw - b.r * 0.15;
-      if (crossed && b.y > top + b.r * 0.4 && b.y < gy - b.r * 0.2 && !this.shielded(side)) {
+      var crossed = side === 0 ? b.x < gw + b.r * 0.2 : b.x > W.w - gw - b.r * 0.2;
+      if (crossed && b.y > top + b.r * 0.3 && b.y < gy - b.r * 0.15 && !this.shielded(side)) {
         this.goal(1 - side);
         return;
       }
     }
   };
+  /* Ball flight during the goal celebration: gravity, net drag and net
+     collision so the ball drops to the floor inside the goal. */
+  Match.prototype.celebrateBall = function (dt) {
+    var b = this.ball, gy = W.ground, side = this.netHit ? this.netHit.side : 1;
+    var gw = W.goalW, gh = W.goalH, top = gy - gh;
+    var backX = side === 0 ? gw : W.w - gw;      /* the goal line */
+    var deepX = side === 0 ? 0 : W.w;            /* back of the net */
+    b.vy += GRAV * dt;
+    b.vx *= 1 - 1.9 * dt; b.vy *= 1 - 0.35 * dt;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.rot += (b.vx / Math.max(8, b.r)) * dt * 0.5;
+    /* net walls: the mesh catches the ball and lets it sag */
+    var inside = side === 0 ? b.x - b.r < backX : b.x + b.r > backX;
+    if (inside) {
+      var wallX = side === 0 ? 10 + b.r : W.w - 10 - b.r;
+      if (side === 0 ? b.x < wallX : b.x > wallX) {
+        b.x = wallX;
+        if (Math.abs(b.vx) > 120) { this.netPuff(side, b.x, b.y); Audio.play('net'); }
+        b.vx = -b.vx * 0.28;
+      }
+      if (b.y - b.r < top + 8) { b.y = top + 8 + b.r; b.vy = Math.abs(b.vy) * 0.3; }
+    }
+    if (b.y + b.r > gy) {
+      b.y = gy - b.r;
+      if (Math.abs(b.vy) > 130) { Audio.play('bounce'); this.burst(b.x, gy, 4, '#e8f4d8', 70); }
+      b.vy = -b.vy * 0.42; b.vx *= 0.86;
+      if (Math.abs(b.vy) < 40) b.vy = 0;
+    }
+    this.trail.push({ x: b.x, y: b.y, r: b.r });
+    if (this.trail.length > 9) this.trail.shift();
+  };
+  /* Big in-world shout, the way the arcade original barks at you. */
+  Match.prototype.callout = function (text, side, o) {
+    o = o || {};
+    this.calls = this.calls || [];
+    this.calls.push({
+      text: text, side: side, t: this.t, life: o.big ? 1.9 : 1.2,
+      color: o.color || C.gold, big: !!o.big
+    });
+    if (this.calls.length > 3) this.calls.shift();
+  };
+
+  Match.prototype.netPuff = function (side, x, y) {
+    this.ripples = this.ripples || [];
+    this.ripples.push({ side: side, x: x, y: y, t: this.t });
+    if (this.ripples.length > 6) this.ripples.shift();
+  };
+
   Match.prototype.goal = function (scorer) {
     var b = this.ball;
     this.state = 'goal'; this.goalTimer = 2.35; this.goalSide = scorer;
@@ -537,6 +620,10 @@
       HB.toast('DOUBLE GOAL! +2', 'power');
     }
     this.maxDeficit = Math.max(this.maxDeficit, Math.max(0, this.score[1] - this.score[0]));
+    /* The ball must visibly rattle around inside the net, not stop dead.
+       Record the entry point so the mesh can bulge and ripple from there. */
+    this.netHit = { side: 1 - scorer, x: b.x, y: b.y, t: this.t, power: U.clamp(Math.abs(b.vx) / 900, 0.35, 1.6) };
+    this.ripples = this.ripples || [];
     Audio.play('goal'); Audio.cheer(1.6); Audio.setIntensity(1);
     this.confetti(); this.shake = 12; this.flash = 0.75; this.slow = 0.35;
     this.burst(b.x, b.y, 34, scorer === 0 ? C.red : C.blue, 420);
@@ -596,48 +683,59 @@
 
   /* ---------------- Control layout (V coordinates) ---------------- */
   Match.prototype.layoutControls = function () {
-    var V = HB.V, w = V.w, y1 = 466, y2 = 578;
+    var V = HB.V, w = V.w, h = V.h;
     var flip = HB.Save.data.settings.flipControls;
-    var out = [];
-    function mirror(r) { return { x: w - r.x - r.w, y: r.y, w: r.w, h: r.h }; }
-    if (!this.local) {
-      var B = U.clamp((w - 40) / 14, 62, 92), gap = 10;
-      var rx1 = w - 24 - B * 2 - gap, rx2 = w - 24 - B;
-      var ctrl = {
-        left: { x: 24, y: y2, w: B, h: B },
-        right: { x: 24 + B + gap, y: y2, w: B, h: B },
-        dash: { x: rx1, y: y1, w: B, h: B },
-        jump: { x: rx2, y: y1, w: B, h: B },
-        kick: { x: rx1, y: y2, w: B, h: B },
-        lob: { x: rx2, y: y2, w: B, h: B }
+
+    /* One thumb cluster: LEFT / RIGHT on the ground row, JUMP / KICK above.
+       `dir` mirrors the pair for the right-hand side of a shared screen. */
+    function cluster(anchorX, dir, pad, topY, bottomY, gap) {
+      var split = Math.round(gap * 0.55);
+      var nearX = dir > 0 ? anchorX : anchorX - pad;
+      var farX = dir > 0 ? anchorX + pad + split : anchorX - pad * 2 - split;
+      var c = {
+        left: { x: nearX, y: bottomY, w: pad, h: pad },
+        right: { x: farX, y: bottomY, w: pad, h: pad }
       };
-      if (flip) {
-        ['left', 'right', 'dash', 'jump', 'kick', 'lob'].forEach(function (k) { ctrl[k] = mirror(ctrl[k]); });
-      }
-      var pw = Math.min(82, B), px = w / 2 - (pw * 3 + 24) / 2, py = 612;
-      ctrl.powers = [
-        { x: px, y: py, w: pw, h: pw },
-        { x: px + pw + 12, y: py, w: pw, h: pw },
-        { x: px + (pw + 12) * 2, y: py, w: pw, h: pw }
-      ];
-      out.push(ctrl); out.push(null);
-      out[0].pause = { x: w - 92, y: 26, w: 64, h: 56 };
-    } else {
-      var g = 8, BL = U.clamp((w / 2 - 36 - 4 * g) / 5, 52, 84);
-      var total = 5 * BL + 4 * g, leftBase = 18, rightBase = w - 18 - total;
-      function cluster(base) {
-        var mk = function (i, yy) { return { x: base + i * (BL + g), y: yy, w: BL, h: BL }; };
-        return {
-          jump: mk(0, y1), kick: mk(1, y1), lob: mk(2, y1), dash: mk(3, y1),
-          left: mk(0, y2), right: mk(1, y2),
-          powers: [mk(2, y2), mk(3, y2), mk(4, y2)]
-        };
-      }
-      out.push(cluster(leftBase)); out.push(cluster(rightBase));
-      out[0].pause = { x: w - 92, y: 26, w: 64, h: 56 };
+      /* JUMP stays bottom-right, KICK sits above the LEFT button:
+         a diagonal pair, so the two thumbs never fight for one spot. */
+      c.jump = { x: farX, y: topY, w: pad, h: pad };
+      c.kick = { x: nearX, y: topY, w: pad, h: pad };
+      if (flip) { var t = c.left; c.left = c.right; c.right = t; t = c.jump; c.jump = c.kick; c.kick = t; }
+      return c;
     }
-    return out;
+
+    if (!this.local) {
+      var pad = U.clamp(w * 0.083, 74, 104);
+      var gap = Math.round(pad * 0.16);
+      var bottomY = h - pad - 20, topY = bottomY - pad - gap - 10;
+      var c1 = cluster(24, 1, pad, topY, bottomY, gap);
+      var pw = U.clamp(w * 0.05, 52, 64), pg = 10;
+      var px = w / 2 - (pw * 3 + pg * 2) / 2, py = h - pw - 16;
+      c1.powers = [
+        { x: px, y: py, w: pw, h: pw },
+        { x: px + pw + pg, y: py, w: pw, h: pw },
+        { x: px + (pw + pg) * 2, y: py, w: pw, h: pw }
+      ];
+      c1.pause = { x: w / 2 - 30, y: 12, w: 60, h: 46 };
+      out_init(c1);
+      return [c1, null];
+    }
+
+    /* shared screen: two mirrored clusters, powers tucked in the middle */
+    var padL = U.clamp((w / 2 - 120) / 2.2, 56, 80);
+    var gapL = Math.round(padL * 0.14);
+    var by = h - padL - 12, ty = by - padL - gapL - 10;
+    var left = cluster(16, 1, padL, ty, by, gapL);
+    var right = cluster(w - 16, -1, padL, ty, by, gapL);
+    var pwL = 42, pyL = h - pwL - 10;
+    var midL = w / 2 - pwL / 2;
+    left.powers = [{ x: midL - pwL - 8, y: pyL, w: pwL, h: pwL }, { x: midL + pwL + 8, y: pyL, w: pwL, h: pwL }];
+    right.powers = [];
+    left.pause = { x: w / 2 - 26, y: 8, w: 52, h: 38 };
+    out_init(left); out_init(right);
+    return [left, right];
   };
+  function out_init(c) { if (!c.powers) c.powers = []; }
   Match.prototype.inputFromPointers = function () {
     var layout = this.layoutControls(), Input = HB.Input, out = [{}, {}];
     for (var s = 0; s < 2; s++) {
@@ -645,14 +743,15 @@
       var keys = ['left', 'right', 'jump', 'kick', 'lob', 'dash'];
       for (var i = 0; i < keys.length; i++) {
         var k = keys[i];
+        if (!cl[k]) continue;
         out[s][k] = Input.pointersIn(cl[k]).length > 0;
       }
     }
-    /* keyboard */
+    /* keyboard fallback - four-button scheme, E / X still lob on desktop */
     var K = Input.key, solo = !this.local;
     var map1 = solo ? { left: ['a', 'left'], right: ['d', 'right'], jump: ['w', 'up', 'space'], kick: ['s', 'down'], lob: ['e', 'x'], dash: ['q', 'shift'] } :
-      { left: ['a'], right: ['d'], jump: ['w'], kick: ['s'], lob: ['e'], dash: ['q'] };
-    var map2 = { left: ['left'], right: ['right'], jump: ['up'], kick: ['down'], lob: ['.'], dash: ['/'] };
+      { left: ['a'], right: ['d'], jump: ['w'], kick: ['s'], dash: ['q'] };
+    var map2 = { left: ['left'], right: ['right'], jump: ['up'], kick: ['down'], dash: ['/'] };
     function apply(map, o) { for (var k in map) { var arr = map[k]; for (var j = 0; j < arr.length; j++) if (K(arr[j])) { o[k] = true; break; } } }
     apply(map1, out[0]);
     if (this.local) apply(map2, out[1]);
@@ -675,7 +774,6 @@
     }
   };
 
-  /* ---------------- Rendering ---------------- */
   Match.prototype.render = function (g) {
     var V = HB.V, st = this.stadium, q = HB.Save.data.settings.quality;
     var bg = Art.buildBackground(st, V, q);
@@ -684,8 +782,11 @@
     var sx = this.shake ? U.rnd(-this.shake, this.shake) : 0, sy = this.shake ? U.rnd(-this.shake * 0.6, this.shake * 0.6) : 0;
     g.translate(V.worldX + sx, V.worldY + sy); g.scale(V.worldScale, V.worldScale);
     Art.pitch(g, this);
-    Art.goal(g, 0, W.goalW * (this.goalBoost(0) > 1 ? 1.25 : 1), W.goalH * this.goalBoost(0), C.red, HB.clock, { glow: this.shielded(0) ? C.cyan : null });
-    Art.goal(g, 1, W.goalW * (this.goalBoost(1) > 1 ? 1.25 : 1), W.goalH * this.goalBoost(1), C.blue, HB.clock, { glow: this.shielded(1) ? C.cyan : null });
+    /* goal side 0 is on the LEFT and is defended by player 0 */
+    Art.goal(g, 0, W.goalW * (this.goalBoost(0) > 1 ? 1.25 : 1), W.goalH * this.goalBoost(0), C.red, HB.clock,
+      { glow: this.shielded(0) ? C.cyan : null, hit: this.netHit && this.netHit.side === 0 ? this.netHit : null, ripples: this.ripples });
+    Art.goal(g, 1, W.goalW * (this.goalBoost(1) > 1 ? 1.25 : 1), W.goalH * this.goalBoost(1), C.blue, HB.clock,
+      { glow: this.shielded(1) ? C.cyan : null, hit: this.netHit && this.netHit.side === 1 ? this.netHit : null, ripples: this.ripples });
     /* shadows */
     for (var i = 0; i < 2; i++) {
       var p = this.players[i], a = U.clamp(1 - (W.ground - p.y) / 380, 0.15, 1);
@@ -703,7 +804,19 @@
     }
     /* players behind / in front of ball */
     for (i = 0; i < 2; i++) this.drawPlayer(g, this.players[i]);
-    Art.ball(g, this.ball, HB.clock);
+    /* A scored ball sits behind the front post, so it is drawn slightly
+       darkened and clipped by the goal mouth for a real depth cue. */
+    var inNet = this.state === 'goal' && this.netHit;
+    if (inNet) {
+      g.save();
+      var nside = this.netHit.side, nx0 = nside === 0 ? 0 : W.w - W.goalW;
+      Art.rr(g, nx0, W.ground - W.goalH, W.goalW, W.goalH, 4); g.clip();
+      g.globalAlpha = 0.92;
+      Art.ball(g, this.ball, HB.clock);
+      g.restore();
+    } else {
+      Art.ball(g, this.ball, HB.clock);
+    }
     /* particles */
     for (i = 0; i < this.particles.length; i++) {
       var pt = this.particles[i], al = U.clamp(pt.life / pt.max, 0, 1);
@@ -799,55 +912,90 @@
     /* match info */
     Art.text(g, this.mode === 'league' ? Data.leagues[HB.Save.data.league].name + ' LEAGUE' : this.mode.toUpperCase(), cx, 108, 13, U.alpha(C.paper, 0.65), 'center', '800', { shadow: false });
   };
-  Match.prototype.controlButton = function (g, r, label, icon, color, pressed, badge) {
-    var a = pressed ? 0.95 : 0.78;
-    g.save(); g.globalAlpha = a;
-    var yy = pressed ? r.y + 3 : r.y;
-    Art.panel(g, r.x, yy, r.w, r.h, 20, { fill: U.alpha(color, pressed ? 0.92 : 0.32), stroke: U.alpha('#ffffff', 0.5), gradient: true, fill2: U.alpha(C.ink, 0.75), gloss: true, shadowBlur: pressed ? 6 : 12, shadowY: 4 });
-    Art.icon(g, icon, r.x + r.w / 2, yy + r.h / 2 - 8, r.w * 0.44, '#ffffff');
-    if (label) Art.text(g, label, r.x + r.w / 2, yy + r.h - 15, 11, U.alpha('#ffffff', 0.9), 'center', '900', { shadow: false });
-    if (badge) {
-      Art.circle(g, r.x + r.w - 12, yy + 12, 12, C.gold);
-      Art.text(g, badge, r.x + r.w - 12, yy + 12, 11, C.ink, 'center', '900', { shadow: false });
-    }
-    g.restore();
-  };
   Match.prototype.renderControls = function (g) {
     if (this.paused || this.finished) return;
-    var V = HB.V, shade = g.createLinearGradient(0, 424, 0, 720);
-    shade.addColorStop(0, 'rgba(4,12,28,0)'); shade.addColorStop(1, 'rgba(4,12,28,0.52)');
-    g.fillStyle = shade; g.fillRect(0, 424, V.w, 296);
+    var V = HB.V, shade = g.createLinearGradient(0, 420, 0, 720);
+    shade.addColorStop(0, 'rgba(4,12,28,0)'); shade.addColorStop(1, 'rgba(4,12,28,0.46)');
+    g.fillStyle = shade; g.fillRect(0, 420, V.w, 300);
     var layout = this.layoutControls(), Input = HB.Input;
     function down(r) { return Input.pointersIn(r).length > 0; }
     for (var s = 0; s < 2; s++) {
       var cl = layout[s]; if (!cl) continue;
       var col = s === 0 ? C.red : C.blue;
-      this.controlButton(g, cl.left, null, 'left', col, down(cl.left));
-      this.controlButton(g, cl.right, null, 'right', col, down(cl.right));
-      this.controlButton(g, cl.jump, 'JUMP', 'jump', C.teal, down(cl.jump));
-      this.controlButton(g, cl.kick, 'KICK', 'kick', C.gold, down(cl.kick));
-      this.controlButton(g, cl.lob, 'LOB', 'up', C.orange, down(cl.lob));
-      this.controlButton(g, cl.dash, 'DASH', 'bolt', C.purple, down(cl.dash));
       var p = this.players[s];
+      /* LEFT / RIGHT are ground rockets: wide, low, high contrast */
+      this.dirButton(g, cl.left, 'left', col, down(cl.left), p);
+      this.dirButton(g, cl.right, 'right', col, down(cl.right), p);
+      /* KICK charges - show the charge ring on the button itself */
+      this.controlButton(g, cl.jump, 'JUMP', 'jump', C.teal, down(cl.jump));
+      this.controlButton(g, cl.kick, p.charging === 'kick' ? 'SHOOT!' : 'KICK', 'kick', C.gold, down(cl.kick), p.charging === 'kick' ? p.shotCharge : 0);
       for (var i = 0; i < 3; i++) {
-        var r = cl.powers[i], def = Data.power(p.powers[i]);
+        var r = cl.powers[i]; if (!r) continue;
+        var def = Data.power(p.powers[i]);
         var ready = p.energy >= def.cost && Meta.powerUnlocked(def.id);
         var costRatio = U.clamp(p.energy / def.cost, 0, 1);
-        Art.panel(g, r.x, r.y, r.w, r.h, 18, { fill: ready ? U.alpha(def.color, 0.34) : 'rgba(8,18,38,0.72)', stroke: ready ? U.alpha(def.color, 0.95) : 'rgba(255,255,255,0.18)', gradient: true, fill2: 'rgba(8,18,38,0.85)', gloss: ready });
+        Art.panel(g, r.x, r.y, r.w, r.h, 16, { fill: ready ? U.alpha(def.color, 0.32) : 'rgba(8,18,38,0.7)', stroke: ready ? U.alpha(def.color, 0.95) : 'rgba(255,255,255,0.16)', gradient: true, fill2: 'rgba(8,18,38,0.85)', gloss: ready });
         if (!ready) {
-          g.save(); Art.rr(g, r.x + 2, r.y + 2, r.w - 4, r.h - 4, 16); g.clip();
-          g.fillStyle = U.alpha(def.color, 0.2); g.fillRect(r.x, r.y + r.h * (1 - costRatio), r.w, r.h * costRatio); g.restore();
+          g.save(); Art.rr(g, r.x + 2, r.y + 2, r.w - 4, r.h - 4, 14); g.clip();
+          g.fillStyle = U.alpha(def.color, 0.22); g.fillRect(r.x, r.y + r.h * (1 - costRatio), r.w, r.h * costRatio); g.restore();
         }
-        Art.icon(g, def.icon, r.x + r.w / 2, r.y + r.h / 2 - 8, r.w * 0.48, ready ? def.color : U.alpha('#ffffff', 0.45));
-        Art.text(g, (i + 1) + '', r.x + r.w / 2, r.y + r.h - 11, 11, U.alpha('#ffffff', 0.8), 'center', '900', { shadow: false });
-        if (!Meta.powerUnlocked(def.id)) Art.icon(g, 'lock', r.x + r.w - 13, r.y + 13, 18, C.mist);
+        Art.icon(g, def.icon, r.x + r.w / 2, r.y + r.h / 2, r.w * 0.5, ready ? def.color : U.alpha('#ffffff', 0.42));
+        if (!Meta.powerUnlocked(def.id)) Art.icon(g, 'lock', r.x + r.w - 11, r.y + 11, 15, C.mist);
       }
     }
     if (layout[0].pause) {
       var pr = layout[0].pause;
-      Art.panel(g, pr.x, pr.y, pr.w, pr.h, 14, { fill: 'rgba(9,20,42,0.75)', stroke: 'rgba(255,255,255,0.3)' });
-      Art.icon(g, 'pause', pr.x + pr.w / 2, pr.y + pr.h / 2, 26, C.paper);
+      Art.panel(g, pr.x, pr.y, pr.w, pr.h, 14, { fill: 'rgba(9,20,42,0.7)', stroke: 'rgba(255,255,255,0.26)' });
+      Art.icon(g, 'pause', pr.x + pr.w / 2, pr.y + pr.h / 2, 24, C.paper);
     }
+  };
+  /* Round action button. `charge` (0..1) draws a filling ring while KICK is held. */
+  Match.prototype.controlButton = function (g, r, label, icon, color, pressed, charge) {
+    if (!r) return;
+    var a = pressed ? 0.98 : 0.82;
+    var yy = pressed ? r.y + 3 : r.y;
+    g.save(); g.globalAlpha = a;
+    /* soft coloured halo so the button reads at a glance while your thumb is on it */
+    var halo = g.createRadialGradient(r.x + r.w / 2, yy + r.h / 2, r.w * 0.18, r.x + r.w / 2, yy + r.h / 2, r.w * 0.85);
+    halo.addColorStop(0, U.alpha(color, pressed ? 0.5 : 0.26)); halo.addColorStop(1, U.alpha(color, 0));
+    g.fillStyle = halo; g.fillRect(r.x - r.w * 0.3, yy - r.h * 0.3, r.w * 1.6, r.h * 1.6);
+    Art.circle(g, r.x + r.w / 2, yy + r.h / 2, r.w * 0.47, U.alpha(color, pressed ? 0.95 : 0.4));
+    g.lineWidth = 3; g.strokeStyle = U.alpha('#ffffff', 0.55);
+    g.beginPath(); g.arc(r.x + r.w / 2, yy + r.h / 2, r.w * 0.47, 0, Math.PI * 2); g.stroke();
+    g.save();
+    g.beginPath(); g.arc(r.x + r.w / 2, yy + r.h / 2, r.w * 0.4, 0, Math.PI * 2);
+    var sh = g.createLinearGradient(0, yy, 0, yy + r.h);
+    sh.addColorStop(0, 'rgba(255,255,255,0.26)'); sh.addColorStop(0.55, 'rgba(255,255,255,0.02)'); sh.addColorStop(1, 'rgba(0,0,0,0.22)');
+    g.fillStyle = sh; g.fill();
+    g.restore();
+    Art.icon(g, icon, r.x + r.w / 2, yy + r.h / 2 - (label ? 7 : 0), r.w * 0.5, '#ffffff');
+    if (label) Art.text(g, label, r.x + r.w / 2, yy + r.h - 16, Math.max(10, r.w * 0.13), U.alpha('#ffffff', 0.95), 'center', '900', { shadow: false });
+    if (charge) {
+      g.lineWidth = 6; g.lineCap = 'round';
+      g.strokeStyle = 'rgba(255,255,255,0.22)';
+      g.beginPath(); g.arc(r.x + r.w / 2, yy + r.h / 2, r.w * 0.53, -Math.PI / 2, Math.PI * 1.5); g.stroke();
+      g.strokeStyle = charge > 0.42 ? C.gold : C.cyan;
+      g.beginPath(); g.arc(r.x + r.w / 2, yy + r.h / 2, r.w * 0.53, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge); g.stroke();
+    }
+    g.restore();
+  };
+  /* Big translucent direction pad with a bold chevron. */
+  Match.prototype.dirButton = function (g, r, dir, col, pressed, p) {
+    if (!r) return;
+    var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    g.save();
+    g.globalAlpha = pressed ? 0.9 : 0.5;
+    var gr = g.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
+    gr.addColorStop(0, U.alpha('#ffffff', pressed ? 0.3 : 0.16)); gr.addColorStop(1, U.alpha(col, pressed ? 0.5 : 0.24));
+    Art.rr(g, r.x, r.y, r.w, r.h, Math.min(r.h * 0.34, 26)); g.fillStyle = gr; g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = U.alpha('#ffffff', pressed ? 0.75 : 0.34); g.stroke();
+    g.globalAlpha = 1;
+    var s = dir === 'left' ? -1 : 1, w2 = r.w * 0.2, h2 = r.h * 0.19;
+    g.beginPath();
+    g.moveTo(cx + s * w2, cy - h2); g.lineTo(cx - s * w2 * 0.5, cy); g.lineTo(cx + s * w2, cy + h2);
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.lineWidth = Math.max(5, r.w * 0.075); g.strokeStyle = U.alpha('#ffffff', pressed ? 1 : 0.85); g.stroke();
+    g.restore();
   };
   Match.prototype.renderOverlays = function (g) {
     var V = HB.V, w = V.w, h = V.h, cx = w / 2;
@@ -866,6 +1014,23 @@
       Art.text(g, 'GOAL!', 0, 0, 92, C.gold, 'center', '900', { outline: C.ink, outlineW: 12, glow: C.orange, glowSize: 26 });
       g.restore();
       Art.text(g, this.goalSide === 0 ? (this.local ? 'PLAYER 1' : HB.Save.data.name) + ' SCORES!' : (this.local ? 'PLAYER 2' : this.players[1].char.name) + ' SCORES!', cx, h * 0.5, 24, C.paper, 'center', '900');
+    }
+    /* reaction callouts: SAVE! / WHAT A SAVE! with a punch-in scale */
+    if (this.calls) {
+      for (var ci = this.calls.length - 1; ci >= 0; ci--) {
+        var call = this.calls[ci], ca = this.t - call.t;
+        if (ca > call.life) { this.calls.splice(ci, 1); continue; }
+        var cf = U.clamp(ca / 0.22, 0, 1);
+        var out = ca > call.life - 0.3 ? (call.life - ca) / 0.3 : 1;
+        var sc2 = call.big ? (1 + U.easeOut(cf) * 0.12) * (0.6 + U.easeBack(cf) * 0.4) : (0.7 + U.easeBack(cf) * 0.3);
+        var cxx = call.side === 0 ? w * 0.28 : w * 0.72;
+        g.save(); g.globalAlpha = out; g.translate(cxx, h * 0.3 - (call.big ? 0 : 40) + (1 - cf) * 18);
+        g.scale(sc2, sc2);
+        Art.text(g, call.text, 0, 0, call.big ? 54 : 34, call.color, 'center', '900',
+          { outline: C.ink, outlineW: call.big ? 10 : 7, glow: call.color, glowSize: call.big ? 24 : 12 });
+        g.restore();
+      }
+      g.globalAlpha = 1;
     }
     if (this.message && this.t < this.messageUntil) {
       var a = U.clamp((this.messageUntil - this.t) / 0.5, 0, 1);

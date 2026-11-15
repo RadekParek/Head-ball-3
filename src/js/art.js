@@ -361,39 +361,85 @@
     var gy = W.ground, w = W.w;
     var x0 = side === 0 ? 0 : w - gw;
     var top = gy - gh, i;
+    /* the direction the net leans: -1 for the left goal, +1 for the right */
+    var lean = side === 0 ? 1 : -1;
+    var netHit = opts.hit, ripples = opts.ripples || [];
+    /* How hard the mesh is pushed out right now, 0..1, from the last strike. */
+    var bulge = 0, bx = x0 + gw * 0.5, by = top + gh * 0.55;
+    if (netHit) {
+      var age = t - netHit.t;
+      if (age >= 0 && age < 2.2) {
+        bulge = Math.max(0, 1 - age / 0.55) * (0.55 + netHit.power * 0.45);
+        bx = netHit.x; by = netHit.y;
+      }
+    }
     g.save();
-    /* net box */
-    var ng = g.createLinearGradient(x0, top, x0 + gw, gy);
-    ng.addColorStop(0, 'rgba(9,22,44,0.72)'); ng.addColorStop(1, 'rgba(150,195,230,0.16)');
+    /* --- empty net interior: dark depth, then the mesh --- */
+    var ng = g.createLinearGradient(x0, top, x0 + gw * lean, gy);
+    ng.addColorStop(0, 'rgba(6,16,34,0.88)'); ng.addColorStop(0.65, 'rgba(12,30,56,0.72)'); ng.addColorStop(1, 'rgba(120,170,215,0.18)');
     g.fillStyle = ng; g.fillRect(x0, top, gw, gh);
     g.save(); Art.rr(g, x0, top, gw, gh, 4); g.clip();
+    /* mesh: vertical cords bow towards the strike point, horizontals sag under it */
     g.lineWidth = 1;
-    g.strokeStyle = 'rgba(226,242,255,0.24)';
-    for (i = x0 + 8; i < x0 + gw; i += 11) { g.beginPath(); g.moveTo(i, top); g.lineTo(i, gy); g.stroke(); }
-    for (i = top + 8; i < gy; i += 11) { g.beginPath(); g.moveTo(x0, i); g.lineTo(x0 + gw, i); g.stroke(); }
-    g.strokeStyle = 'rgba(226,242,255,0.07)';
-    for (i = -gh; i < gw + gh; i += 18) { g.beginPath(); g.moveTo(x0 + i, top); g.lineTo(x0 + i - gh, gy); g.stroke(); }
+    for (i = x0 + 7; i < x0 + gw - 2; i += 8) {
+      var vx = i - bx, vy = top + gh * 0.5 - by;
+      var push = bulge * Math.max(0, 1 - Math.abs(vx) / (gw * 0.85)) * (22 + Math.abs(vy) * 0.04);
+      g.strokeStyle = 'rgba(226,242,255,' + (0.2 + bulge * 0.1) + ')';
+      g.beginPath();
+      g.moveTo(i, top);
+      g.quadraticCurveTo(i + lean * push * 0.5, top + gh * 0.55, i + lean * push, gy);
+      g.stroke();
+    }
+    for (i = top + 8; i < gy; i += 9) {
+      var sag = bulge * Math.max(0, 1 - Math.abs(i - by) / (gh * 0.7)) * 10;
+      g.strokeStyle = 'rgba(226,242,255,' + (0.13 + bulge * 0.08) + ')';
+      g.beginPath(); g.moveTo(x0, i + sag); g.quadraticCurveTo(x0 + gw * 0.5, i + sag * 1.6, x0 + gw, i + sag); g.stroke();
+    }
+    /* diagonal weave, barely there, sells "this is a net" */
+    g.strokeStyle = 'rgba(226,242,255,0.055)';
+    for (i = -gh; i < gw + gh; i += 20) { g.beginPath(); g.moveTo(x0 + i, top); g.lineTo(x0 + i - gh, gy); g.stroke(); }
+    /* ripple rings where the ball struck */
+    for (i = 0; i < ripples.length; i++) {
+      var rp = ripples[i], ra = t - rp.t;
+      if (ra > 0.9 || ra < 0) continue;
+      var rf = U.clamp(ra / 0.9, 0, 1);
+      g.globalAlpha = (1 - rf) * 0.55;
+      g.strokeStyle = '#bfe4ff'; g.lineWidth = 3 * (1 - rf) + 0.5;
+      g.beginPath(); g.arc(rp.x, rp.y, Math.max(1, 12 + rf * 90), 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = 1;
+    }
     g.restore();
-    /* back stanchion */
-    Art.fillRR(g, side === 0 ? x0 : x0 + gw - 7, top, 7, gh, 3, 'rgba(214,232,250,0.65)');
-    /* goal line on the grass */
-    g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 3;
+    /* --- back stanchion --- */
+    Art.fillRR(g, side === 0 ? x0 + gw - 7 : x0, top, 7, gh, 3, 'rgba(206,228,250,0.7)');
+    /* net floor shadow so the ball sits in the goal, not on it */
+    var fl = g.createLinearGradient(x0, gy - 26, x0, gy);
+    fl.addColorStop(0, 'rgba(4,12,26,0)'); fl.addColorStop(1, 'rgba(4,12,26,0.45)');
+    g.fillStyle = fl; g.fillRect(x0, gy - 26, gw, 26);
+    /* goal line */
+    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 3;
     g.beginPath(); g.moveTo(x0, gy + 2); g.lineTo(x0 + gw, gy + 2); g.stroke();
-    /* crossbar + front post (metal) */
-    var bar = g.createLinearGradient(0, top - 10, 0, top + 4);
-    bar.addColorStop(0, '#ffffff'); bar.addColorStop(0.5, '#e2ecf8'); bar.addColorStop(1, '#8299ba');
-    Art.fillRR(g, x0, top - 10, gw, 13, 5, bar);
-    var postX = side === 0 ? x0 + gw - 12 : x0;
-    var metal = g.createLinearGradient(postX, 0, postX + 12, 0);
-    metal.addColorStop(0, '#ffffff'); metal.addColorStop(0.45, '#e0ebf8'); metal.addColorStop(1, '#7c93b4');
-    Art.fillRR(g, postX, top - 8, 12, gh + 10, 5, metal);
-    /* small corner flag */
-    g.strokeStyle = 'rgba(230,240,255,0.8)'; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(postX + (side === 0 ? 12 : 0), top - 12); g.lineTo(postX + (side === 0 ? 12 : 0), top - 40); g.stroke();
+    /* crossbar + front post, thick and glossy like the arcade original */
+    var bar = g.createLinearGradient(0, top - 14, 0, top + 5);
+    bar.addColorStop(0, '#ffffff'); bar.addColorStop(0.45, '#eef5ff'); bar.addColorStop(0.75, '#c3d4e8'); bar.addColorStop(1, '#94aac6');
+    g.save(); g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 8; g.shadowOffsetY = 3;
+    Art.fillRR(g, x0, top - 12, gw, 16, 6, bar);
+    g.restore();
+    var postX = side === 0 ? x0 + gw - 13 : x0;
+    var metal = g.createLinearGradient(postX, 0, postX + 13, 0);
+    metal.addColorStop(0, '#ffffff'); metal.addColorStop(0.4, '#e6effa'); metal.addColorStop(1, '#7f97b8');
+    g.save(); g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 7; g.shadowOffsetY = 2;
+    Art.fillRR(g, postX, top - 10, 13, gh + 12, 5, metal);
+    g.restore();
+    /* a thin highlight down the post */
+    g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(postX + 4, top); g.lineTo(postX + 4, gy - 6); g.stroke();
+    /* corner flag */
+    g.strokeStyle = 'rgba(230,240,255,0.85)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(postX + (side === 0 ? 13 : 0), top - 14); g.lineTo(postX + (side === 0 ? 13 : 0), top - 44); g.stroke();
     g.fillStyle = accent;
-    g.beginPath(); g.moveTo(postX + (side === 0 ? 12 : 0), top - 40);
-    g.lineTo(postX + (side === 0 ? 38 : -26), top - 34);
-    g.lineTo(postX + (side === 0 ? 12 : 0), top - 26); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(postX + (side === 0 ? 13 : 0), top - 44);
+    g.lineTo(postX + (side === 0 ? 42 : -28), top - 37);
+    g.lineTo(postX + (side === 0 ? 13 : 0), top - 28); g.closePath(); g.fill();
     if (opts.glow) {
       g.globalAlpha = 0.3 + Math.sin(t * 5) * 0.12;
       g.strokeStyle = opts.glow; g.lineWidth = 8;
@@ -403,7 +449,6 @@
     g.restore();
   };
 
-  /* ---------------- Character ---------------- */
   function torsoPath(g, R) {
     g.beginPath();
     g.moveTo(-24, -70); g.quadraticCurveTo(0, -76, 24, -70);

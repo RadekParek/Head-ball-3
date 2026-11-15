@@ -87,7 +87,7 @@ ok(lm.local === true, 'local mode set');
 const layout = lm.layoutControls();
 ok(layout[0] && layout[1], 'two control clusters');
 const rects = [];
-for (const cl of layout) for (const k of ['left', 'right', 'jump', 'kick', 'lob', 'dash']) rects.push(cl[k]);
+for (const cl of layout) for (const k of ['left', 'right', 'jump', 'kick']) if (cl[k]) rects.push(cl[k]);
 for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
   const a = rects[i], b = rects[j];
   const overlap = a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
