@@ -345,6 +345,7 @@
     b.lastTouch = p.side; b.touchCd = 0.08;
     p.kickAnim = 0.26; p.energy = Math.min(100, p.energy + 3);
     this.stats[p.side].shots++;
+    if (p.side === 0 && this.tutorialStep === 2) this.tutorialStep = 3;
     this.burst(b.x, b.y, 12, charge > 0.7 ? C.gold : '#ffffff', 200);
     Audio.play(charge > 0.65 ? 'kickHard' : 'kick');
     HB.Input.vibrate(charge > 0.65 ? 30 : 14);
@@ -386,7 +387,7 @@
     /* player vs player */
     var a = this.players[0], c = this.players[1];
     var gap = Math.abs(a.x - c.x);
-    if (gap < 58 && Math.abs(a.y - c.y) < 130) {
+    if (gap < 58 && Math.abs(a.y - c.y) < 110) {
       var push = (58 - gap) * 0.5 * (a.x < c.x ? -1 : 1);
       a.x += push; c.x -= push;
       if (a.slide > 0 && c.stun <= 0) { c.stun = 0.45; c.vy = -230; c.vx = a.facing * 320; this.stats[0].tackles++; Audio.play('tackle'); }
@@ -534,7 +535,7 @@
         this.stats[p.side].headers++;
         if (perfect) { this.stats[p.side].perfectHeaders++; Audio.play('perfect'); this.burst(b.x, b.y, 20, C.gold, 260); this.shake = 5; }
         else Audio.play('header');
-        if (this.tutorialStep === 2) this.tutorialStep = 3;
+        if (this.tutorialStep === 3) this.tutorialStep = 4;
       } else {
         b.vx += nx * 110 + p.vx * 0.3;
         b.vy += ny * 80 - 50;
@@ -658,7 +659,7 @@
     /* shockwave ring + shard burst at the moment of impact */
     this.shock = { x: b.x, y: b.y, t: this.t, color: scorer === 0 ? C.red : C.blue };
     this.players[scorer].pose = 'celebrate';
-    if (this.tutorialStep === 3) this.finishTutorial();
+    if (this.tutorialStep === 4) this.finishTutorial();
     if (this.goldenActive) { this.goalTimer = 2.1; }
     HB.Input.vibrate(60);
   };
@@ -691,11 +692,11 @@
 
   /* ---------------- Tutorial ---------------- */
   var TUT = [
-    'Use LEFT / RIGHT to move. Run to the ball!',
-    'Tap JUMP. Tap again in the air for a double jump!',
-    'Hold KICK to charge, release to smash the ball.',
-    'Now score a goal to finish the tutorial!',
-    'Nice work! You are ready.'
+    'LEFT / RIGHT to run. You turn on a coin, so commit to a direction!',
+    'Tap JUMP, and tap again in mid-air for a double jump.',
+    'TAP KICK for a low drive. HOLD KICK and release for a high ball.',
+    'Jump into the ball to head it - the top of your arc hits hardest.',
+    'Score a goal to finish the tutorial!'
   ];
   Match.prototype.updateTutorial = function (dt) {
     this.tutorialHint += dt;
@@ -861,6 +862,7 @@
     } else {
       Art.ball(g, this.ball, HB.clock);
     }
+    this.drawShotPreview(g);
     /* particles */
     for (i = 0; i < this.particles.length; i++) {
       var pt = this.particles[i], al = U.clamp(pt.life / pt.max, 0, 1);
@@ -1018,6 +1020,50 @@
       Art.icon(g, 'pause', pr.x + pr.w / 2, pr.y + pr.h / 2, 24, C.paper);
     }
   };
+  /* Dotted arc that predicts the shot while KICK is held: a quick tap hugs
+     the floor, a full hold loops high, so the player can read the difference. */
+  Match.prototype.drawShotPreview = function (g) {
+    for (var side = 0; side < 2; side++) {
+      var p = this.players[side];
+      if (!p || p.ai || p.charging !== 'kick') continue;
+      this.drawShotPreviewFor(g, p);
+    }
+  };
+  Match.prototype.drawShotPreviewFor = function (g, p) {
+    var b = this.ball, c = p.shotCharge;
+    var dir = p.side === 0 ? 1 : -1;
+    var reach = 78 * p.scale + b.r;
+    var bx = p.x + p.facing * 26 * p.scale, by = p.y - 26 * p.scale;
+    /* only draw it when the ball is actually in range; the arc starts at the ball */
+    if (U.dist(b.x, b.y, bx, by) > reach && U.dist(b.x, b.y, p.x, p.y - 60 * p.scale) > 96 * p.scale + b.r) return;
+    var low = c <= 0.42;
+    var power = (520 + p.stats.shot * 5.4) * (0.58 + c * 0.82) * (this.ownerEffect('rocket', p.side) ? 1.55 : 1);
+    var vx = dir * power * (low ? 1 : 0.86) + p.vx * 0.22;
+    var vy = low ? -(150 + c * 110) : -(600 + c * 300);
+    var x = b.x, y = b.y, dt = 1 / 60;
+    g.save();
+    for (var i = 0; i < 54; i++) {
+      vy += 1520 * dt;
+      vx *= 1 - 0.16 * dt; vy *= 1 - 0.05 * dt;
+      x += vx * dt; y += vy * dt;
+      if (y + b.r > W.ground || x < 0 || x > W.w) break;
+      if (i % 2 !== 0) continue;
+      var f = 1 - i / 54;
+      var rr2 = 2.4 + 4.2 * f;
+      g.globalAlpha = 0.9 * f + 0.1;
+      g.shadowColor = low ? C.cyan : C.gold; g.shadowBlur = 10;
+      Art.circle(g, x, y, rr2, low ? '#d9fbff' : '#fff3c4');
+      g.shadowBlur = 0;
+    }
+    g.restore();
+    /* aim chevron right in front of the boot */
+    g.save();
+    g.globalAlpha = 0.8; g.strokeStyle = low ? C.cyan : C.gold; g.lineWidth = 4; g.lineCap = 'round';
+    var ax = p.x + p.facing * (52 + c * 26), ay = p.y - 26 - (low ? 0 : c * 40);
+    g.beginPath(); g.moveTo(ax - 8 * p.facing, ay - 9); g.lineTo(ax + 8 * p.facing, ay); g.lineTo(ax - 8 * p.facing, ay + 9); g.stroke();
+    g.restore();
+  };
+
   /* Round action button. `charge` (0..1) draws a filling ring while KICK is held. */
   Match.prototype.controlButton = function (g, r, label, icon, color, pressed, charge) {
     if (!r) return;

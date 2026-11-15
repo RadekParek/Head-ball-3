@@ -98,7 +98,7 @@
       firstRun: true, tutorialDone: false,
       settings: {
         music: 0.55, sfx: 0.85, haptics: true, difficulty: 2, matchLength: 90,
-        goldenGoal: true, quality: 1, flipControls: false, showFps: false
+        goldenGoal: true, quality: 1, flipControls: false, showFps: false, autoQuality: true
       }
     };
   }
