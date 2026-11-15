@@ -377,19 +377,19 @@
       if (this.onlyLegends == null) this.onlyLegends = false;
       var pool = [];
       for (var pz = 0; pz < Data.characters.length; pz++) if (!this.onlyLegends || Data.characters[pz].legend) pool.push(pz);
-      var chipW = 132, chipH = 30;
+      var chipW = 116, chipH = 30, chipsRight = px;
       var chips = [{ id: 'all', label: 'ALL ' + Data.characters.length }, { id: 'legends', label: '★ LEGENDS' }];
       for (var ci = 0; ci < chips.length; ci++) {
-        var cr = { x: px + ci * (chipW + 8), y: cy - 38, w: chipW, h: chipH };
+        var cr = { x: chipsRight + ci * (chipW + 8), y: cy - 2, w: chipW, h: chipH };
         var on = (chips[ci].id === 'legends') === !!this.onlyLegends;
         Art.fillRR(g, cr.x, cr.y, cr.w, cr.h, 15, on ? U.alpha(C.gold, 0.85) : 'rgba(255,255,255,0.08)');
         Art.text(g, chips[ci].label, cr.x + cr.w / 2, cr.y + cr.h / 2, 12, on ? C.ink : C.paper, 'center', '900', { shadow: false });
         UI.region('locker.filter.' + chips[ci].id, cr, (function (only) { return function () { self.onlyLegends = only; UI.st('locker.scroll').off = 0; Audio.play('ui'); }; })(chips[ci].id === 'legends'), 'button');
       }
-      var gridTop = cy + 4;
+      var gridTop = cy + 34;
       var cols = 5, gap = 10, cw = (listW - 24 - (cols - 1) * gap) / cols, cardH = 116;
       var rows = Math.ceil(pool.length / cols), contentH = rows * (cardH + gap) + 20;
-      UI.scroll('locker.scroll', { x: px, y: gridTop - 4, w: listW, h: chh - 2 }, contentH, function (gg, top, bottom) {
+      UI.scroll('locker.scroll', { x: px, y: gridTop - 6, w: listW, h: chh - 28 }, contentH, function (gg, top, bottom) {
         var r0 = Math.max(0, Math.floor(top / (cardH + gap)) - 1), r1 = Math.min(rows, Math.ceil(bottom / (cardH + gap)) + 1);
         for (var r = r0; r < r1; r++) {
           for (var c = 0; c < cols; c++) {
