@@ -538,7 +538,7 @@
           this.callout('WHAT A SAVE!', p.side, { big: true, color: p.side === 0 ? C.cyan : C.gold });
           this.shake = 7; this.flash = 0.22; this.slow = 0.5;
           this.burst(wasNear, b.y, 26, C.cyan, 340);
-          Audio.play('save'); Audio.cheer(1.1);
+          Audio.play('wonderSave'); Audio.cheer(1.4);
           HB.Input.vibrate(35);
         } else {
           this.callout('SAVE!', p.side, { color: p.side === 0 ? C.cyan : C.gold });
