@@ -122,14 +122,37 @@
     coin: function (t) { tone({ f: 988, dur: 0.09, v: 0.13, type: 'square', t: t }); tone({ f: 1319, dur: 0.16, v: 0.11, type: 'square', t: t + 0.08 }); },
     unlock: function (t) { chord([72, 76, 79, 84], t, 0.35, 0.09, 'triangle'); chord([74, 79, 83, 86], t + 0.16, 0.45, 0.08, 'triangle'); },
     trophy: function (t) { chord([60, 64, 67, 72], t, 0.5, 0.09, 'sawtooth'); chord([65, 69, 72, 77], t + 0.28, 0.6, 0.09, 'triangle'); chord([67, 72, 76, 79], t + 0.56, 0.9, 0.1, 'triangle'); },
-    kick: function (t) { noise({ t: t, dur: 0.09, f: 900, f2: 300, v: 0.36, filter: 'lowpass' }); tone({ f: 165, f2: 72, dur: 0.11, v: 0.32, type: 'sine', t: t }); },
-    kickHard: function (t) { noise({ t: t, dur: 0.14, f: 1500, f2: 260, v: 0.46, filter: 'lowpass' }); tone({ f: 190, f2: 58, dur: 0.19, v: 0.42, type: 'sine', t: t }); tone({ f: 740, f2: 300, dur: 0.09, v: 0.1, type: 'square', t: t }); },
-    header: function (t) { noise({ t: t, dur: 0.1, f: 700, f2: 240, v: 0.3, filter: 'bandpass' }); tone({ f: 240, f2: 110, dur: 0.12, v: 0.25, type: 'triangle', t: t }); },
+    /* A kick is a leather smack plus a low thump: click, body, tail. */
+    kick: function (t) {
+      noise({ t: t, dur: 0.05, f: 2600, f2: 900, v: 0.3, filter: 'bandpass', q: 0.9 });
+      noise({ t: t + 0.005, dur: 0.09, f: 700, f2: 220, v: 0.34, filter: 'lowpass' });
+      tone({ f: 150, f2: 62, dur: 0.13, v: 0.4, type: 'sine', t: t });
+      tone({ f: 96, f2: 48, dur: 0.18, v: 0.22, type: 'triangle', t: t + 0.01 });
+    },
+    kickHard: function (t) {
+      noise({ t: t, dur: 0.06, f: 3200, f2: 1100, v: 0.4, filter: 'bandpass', q: 0.8 });
+      noise({ t: t + 0.006, dur: 0.16, f: 1100, f2: 180, v: 0.46, filter: 'lowpass' });
+      tone({ f: 175, f2: 48, dur: 0.24, v: 0.5, type: 'sine', t: t });
+      tone({ f: 110, f2: 42, dur: 0.3, v: 0.26, type: 'triangle', t: t + 0.01 });
+      noise({ t: t + 0.02, dur: 0.22, f: 480, f2: 140, v: 0.1, filter: 'bandpass', q: 0.5 });
+    },
+    header: function (t) {
+      noise({ t: t, dur: 0.045, f: 1500, f2: 500, v: 0.26, filter: 'bandpass', q: 1.2 });
+      tone({ f: 230, f2: 96, dur: 0.14, v: 0.3, type: 'triangle', t: t });
+      tone({ f: 130, f2: 60, dur: 0.12, v: 0.2, type: 'sine', t: t + 0.005 });
+    },
     perfect: function (t) { chord([76, 83, 88], t, 0.28, 0.12, 'triangle'); noise({ t: t, dur: 0.16, f: 3200, f2: 800, v: 0.12, filter: 'highpass' }); },
     bounce: function (t) { tone({ f: 210, f2: 95, dur: 0.08, v: 0.15, type: 'sine', t: t }); noise({ t: t, dur: 0.05, f: 480, v: 0.1, filter: 'lowpass' }); },
     post: function (t) { tone({ f: 1180, dur: 0.5, v: 0.18, type: 'sine', t: t }); tone({ f: 1770, dur: 0.35, v: 0.09, type: 'sine', t: t }); tone({ f: 2360, dur: 0.22, v: 0.05, type: 'sine', t: t }); },
-    net: function (t) { noise({ t: t, dur: 0.32, f: 2600, f2: 700, v: 0.17, filter: 'bandpass', q: 0.6 }); },
-    save: function (t) { noise({ t: t, dur: 0.12, f: 1100, f2: 350, v: 0.24, filter: 'bandpass' }); tone({ f: 320, f2: 520, dur: 0.16, v: 0.12, type: 'triangle', t: t }); },
+    net: function (t) {
+      noise({ t: t, dur: 0.36, f: 1900, f2: 520, v: 0.16, filter: 'bandpass', q: 0.45, decay: false, pow: 2.4 });
+      tone({ f: 130, f2: 70, dur: 0.2, v: 0.1, type: 'sine', t: t });
+    },
+    save: function (t) {
+      noise({ t: t, dur: 0.16, f: 1700, f2: 420, v: 0.3, filter: 'bandpass', q: 0.7 });
+      tone({ f: 300, f2: 560, dur: 0.18, v: 0.14, type: 'triangle', t: t });
+      noise({ t: t + 0.04, dur: 0.3, f: 600, f2: 1800, v: 0.07, filter: 'bandpass' });
+    },
     tackle: function (t) { noise({ t: t, dur: 0.18, f: 420, f2: 130, v: 0.32, filter: 'lowpass' }); tone({ f: 130, f2: 60, dur: 0.16, v: 0.24, type: 'square', t: t }); },
     jump: function (t) { tone({ f: 280, f2: 560, dur: 0.13, v: 0.12, type: 'triangle', t: t }); },
     land: function (t) { noise({ t: t, dur: 0.08, f: 320, v: 0.13, filter: 'lowpass' }); },
@@ -139,7 +162,15 @@
     countdown: function (t) { tone({ f: 660, dur: 0.13, v: 0.14, type: 'square', t: t }); },
     go: function (t) { tone({ f: 880, dur: 0.28, v: 0.17, type: 'square', t: t }); tone({ f: 1320, dur: 0.3, v: 0.1, type: 'triangle', t: t }); },
     tick: function (t) { tone({ f: 1200, dur: 0.06, v: 0.09, type: 'square', t: t }); },
-    goal: function (t) { SFX.net(t); A.cheer(1.5); chord([60, 64, 67, 72], t + 0.06, 0.35, 0.1, 'sawtooth'); chord([62, 65, 69, 74], t + 0.24, 0.5, 0.09, 'triangle'); },
+    goal: function (t) {
+      SFX.net(t); A.cheer(1.7);
+      /* a rising stadium horn under the cheer, then a short chant */
+      tone({ f: 196, f2: 294, dur: 0.5, v: 0.12, type: 'sawtooth', t: t + 0.02 });
+      tone({ f: 294, f2: 392, dur: 0.6, v: 0.09, type: 'sawtooth', t: t + 0.22 });
+      chord([60, 64, 67, 72], t + 0.06, 0.35, 0.11, 'sawtooth');
+      chord([62, 65, 69, 74], t + 0.24, 0.5, 0.1, 'triangle');
+      chord([67, 72, 76, 79], t + 0.62, 0.85, 0.09, 'triangle');
+    },
     power: function (t) { tone({ f: 180, f2: 880, dur: 0.32, v: 0.16, type: 'sawtooth', t: t }); noise({ t: t, dur: 0.3, f: 400, f2: 3200, v: 0.11, filter: 'bandpass' }); },
     freeze: function (t) { chord([84, 88, 91, 96], t, 0.55, 0.08, 'sine'); noise({ t: t, dur: 0.4, f: 5200, f2: 2000, v: 0.09, filter: 'highpass' }); },
     fire: function (t) { noise({ t: t, dur: 0.55, f: 260, f2: 1500, v: 0.24, filter: 'bandpass', q: 0.4, decay: false, pow: 0.4 }); },
@@ -157,7 +188,17 @@
     toggle: function (t) { tone({ f: 480, f2: 700, dur: 0.06, v: 0.1, type: 'square', t: t }); },
     penaltyScore: function (t) { SFX.net(t); SFX.goal(t); },
     penaltyMiss: function (t) { tone({ f: 300, f2: 150, dur: 0.3, v: 0.14, type: 'sawtooth', t: t }); },
-    keeper: function (t) { noise({ t: t, dur: 0.16, f: 600, f2: 180, v: 0.18, filter: 'lowpass' }); }
+    keeper: function (t) { noise({ t: t, dur: 0.16, f: 600, f2: 180, v: 0.18, filter: 'lowpass' }); },
+    /* the "ohhh" of a near miss, and the roar of a wonder save */
+    groan: function (t) {
+      noise({ t: t, dur: 0.55, f: 420, f2: 260, v: 0.1, filter: 'bandpass', q: 0.8, decay: false, pow: 2 });
+      tone({ f: 220, f2: 150, dur: 0.5, v: 0.06, type: 'sawtooth', t: t });
+    },
+    wonderSave: function (t) {
+      noise({ t: t, dur: 1.3, f: 380, f2: 1600, v: 0.14, filter: 'bandpass', q: 0.5, decay: false, pow: 0.5 });
+      chord([60, 67, 72, 76], t + 0.05, 0.7, 0.07, 'triangle');
+      tone({ f: 880, f2: 1320, dur: 0.25, v: 0.09, type: 'square', t: t });
+    }
   };
   A.play = function (name, opts) {
     if (!ready || !volSfx) return;
@@ -169,20 +210,57 @@
   /* --- music sequencer: 16th-note scheduler with lookahead --- */
   var SCALE = [0, 2, 4, 7, 9, 12, 14, 16];
   var THEMES = {
-    menu: { bpm: 112, root: 57, wave: 'triangle', prog: [0, 5, 3, 4], bass: [0, -1, 0, -1, 5, -1, 5, -1, 3, -1, 3, -1, 4, -1, 4, -1], lead: [12, -1, 9, -1, 7, -1, 9, -1, 12, -1, 14, -1, 12, -1, 7, -1] },
-    match: { bpm: 138, root: 50, wave: 'sawtooth', prog: [0, 3, 5, 4], bass: [0, 0, -1, 0, 7, -1, 0, -1, 5, 5, -1, 5, 3, -1, 4, -1], lead: [-1, 12, -1, 14, 12, -1, 9, -1, -1, 7, 9, -1, 12, -1, 9, -1] },
-    tense: { bpm: 126, root: 45, wave: 'square', prog: [0, 1, 0, 6], bass: [0, -1, 0, -1, 0, -1, 0, -1, 1, -1, 1, -1, 0, -1, 6, -1], lead: [0, -1, -1, 3, -1, -1, 7, -1, 0, -1, -1, 6, -1, -1, 3, -1] },
-    victory: { bpm: 120, root: 60, wave: 'triangle', prog: [0, 4, 5, 0], bass: [0, -1, 7, -1, 4, -1, 7, -1, 5, -1, 9, -1, 0, -1, 7, -1], lead: [12, 16, 19, 16, 14, 16, 19, -1, 17, 21, 24, 21, 19, 16, 12, -1] },
-    penalty: { bpm: 96, root: 48, wave: 'sine', prog: [0, 0, 1, 1], bass: [0, -1, -1, -1, 0, -1, -1, -1, 1, -1, -1, -1, 1, -1, -1, -1], lead: [-1, -1, 7, -1, -1, -1, 6, -1, -1, -1, 8, -1, -1, -1, 3, -1] }
+    /* brighter, busier menu loop: brass-ish stabs over a four-on-the-floor */
+    menu: {
+      bpm: 118, root: 57, wave: 'square', prog: [0, 5, 3, 4],
+      bass: [0, -1, 0, 0, 5, -1, 5, 5, 3, -1, 3, 3, 4, -1, 4, 7],
+      lead: [12, -1, 9, 12, 7, -1, 9, 7, 12, -1, 14, 12, 9, -1, 7, 9],
+      stab: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0]
+    },
+    /* match loop: driving 4/4 with a clap backbeat and an urgent bass */
+    match: {
+      bpm: 142, root: 50, wave: 'sawtooth', prog: [0, 3, 5, 4],
+      bass: [0, 0, -1, 0, 7, -1, 0, 7, 5, 5, -1, 5, 3, -1, 4, 4],
+      lead: [-1, 12, -1, 14, 12, -1, 9, 12, -1, 7, 9, -1, 12, 14, 9, -1],
+      stab: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1]
+    },
+    tense: {
+      bpm: 130, root: 45, wave: 'square', prog: [0, 1, 0, 6],
+      bass: [0, -1, 0, -1, 0, -1, 0, 0, 1, -1, 1, -1, 0, -1, 6, 6],
+      lead: [0, -1, -1, 3, -1, -1, 7, -1, 0, -1, -1, 6, -1, -1, 3, -1],
+      stab: [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0]
+    },
+    victory: {
+      bpm: 124, root: 60, wave: 'triangle', prog: [0, 4, 5, 0],
+      bass: [0, -1, 7, -1, 4, -1, 7, -1, 5, -1, 9, -1, 0, -1, 7, -1],
+      lead: [12, 16, 19, 16, 14, 16, 19, -1, 17, 21, 24, 21, 19, 16, 12, -1],
+      stab: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1]
+    },
+    penalty: {
+      bpm: 100, root: 48, wave: 'sine', prog: [0, 0, 1, 1],
+      bass: [0, -1, -1, -1, 0, -1, -1, -1, 1, -1, -1, -1, 1, -1, -1, -1],
+      lead: [-1, -1, 7, -1, -1, -1, 6, -1, -1, -1, 8, -1, -1, -1, 3, -1],
+      stab: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    }
   };
   function kick(t, v) { tone({ f: 130, f2: 42, dur: 0.16, v: v * 0.3, type: 'sine', t: t, bus: musicBus }); noise({ t: t, dur: 0.05, f: 1800, f2: 400, v: v * 0.06, filter: 'highpass', bus: musicBus }); }
   function snare(t, v) { noise({ t: t, dur: 0.13, f: 1500, v: v * 0.11, filter: 'bandpass', q: 0.7, bus: musicBus }); tone({ f: 190, f2: 120, dur: 0.09, v: v * 0.06, type: 'triangle', t: t, bus: musicBus }); }
   function hat(t, v) { noise({ t: t, dur: 0.035, f: 7200, v: v * 0.045, filter: 'highpass', bus: musicBus }); }
+  function clap(t, v) { noise({ t: t, dur: 0.11, f: 1100, f2: 2200, v: v * 0.07, filter: 'bandpass', q: 1.1, bus: musicBus }); }
+  function stab(t, v, root) {
+    /* short brass-ish chord, the hook that makes arcade menus feel loud */
+    var notes = [root, root + 4, root + 7, root + 12];
+    for (var i = 0; i < notes.length; i++) {
+      tone({ f: freq(notes[i]), t: t, dur: 0.12, v: v * 0.032, type: 'sawtooth', bus: musicBus });
+    }
+    noise({ t: t, dur: 0.06, f: 2600, f2: 900, v: v * 0.02, filter: 'bandpass', bus: musicBus });
+  }
   function scheduleStep(i, t) {
     var cfg = THEMES[theme] || THEMES.menu, bar = Math.floor(stepIndex / 16) % 4;
     var chordRoot = cfg.root + cfg.prog[bar], v = 0.75 + intensity * 0.35;
     if (i % 4 === 0) kick(t, v);
     if (i === 4 || i === 12) snare(t, v);
+    if (i === 4 || i === 12) clap(t, v);
     if (i % 2 === 0 || (intensity > 0.6 && i % 2 === 1)) hat(t, v);
     var b = cfg.bass[i];
     if (b >= 0) tone({ f: freq(chordRoot - 12 + b), t: t, dur: 0.22, v: 0.1 * v, type: 'square', bus: musicBus });
@@ -192,6 +270,7 @@
       if (intensity > 0.5) tone({ f: freq(chordRoot + 19 + l), t: t + 0.01, dur: 0.12, v: 0.02, type: 'sine', bus: musicBus });
     }
     if (i === 0) chord([chordRoot, chordRoot + 4, chordRoot + 7], t, 0.5, 0.033 * v, 'triangle', musicBus);
+    if (cfg.stab && cfg.stab[i]) stab(t, v, chordRoot + 12);
     stepIndex++;
     if (stepIndex % 16 === 0) barCount++;
   }

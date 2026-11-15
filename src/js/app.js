@@ -42,7 +42,9 @@
   App.resize = function () {
     var cv = App.canvas, V = HB.V;
     var w = window.innerWidth || 1280, h = window.innerHeight || 720;
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    /* App.qualityDpr is lowered by watchPerformance on slow devices */
+    if (App.qualityDpr == null) App.qualityDpr = Math.min(window.devicePixelRatio || 1, 2);
+    var dpr = Math.min(App.qualityDpr, Math.min(window.devicePixelRatio || 1, 2));
     App.cssW = w; App.cssH = h;
     cv.width = Math.max(1, Math.round(w * dpr));
     cv.height = Math.max(1, Math.round(h * dpr));
@@ -117,6 +119,7 @@
     dt = Math.min(dt, 0.05);
     HB.clock += dt;
     App.fps = U.lerp(App.fps, 1 / Math.max(0.0001, dt), 0.08);
+    App.watchPerformance(dt);
     UI.handle(Input.drain());
     App.handleKeys(Input.drainKeys());
     UI.update(dt);
@@ -143,6 +146,23 @@
     }
     App.render(dt);
     requestAnimationFrame(App.frame);
+  };
+
+  /* Mobile GPUs are unpredictable: if the frame time stays above ~22 ms for a
+     second, step the backing store down one notch (2 -> 1.5 -> 1). It never
+     steps back up, so a weak device cannot oscillate. */
+  App.watchPerformance = function (dt) {
+    if (!HB.Save.data.settings.autoQuality) return;
+    App._perfT = (App._perfT || 0) + dt;
+    App._perfSum = (App._perfSum || 0) + dt;
+    if (App._perfT < 1.2) return;
+    var avg = App._perfSum / App._perfT;
+    App._perfT = 0; App._perfSum = 0;
+    if (avg > 0.022 && App.qualityDpr > 1) {
+      App.qualityDpr = Math.max(1, App.qualityDpr - 0.5);
+      App.resize();
+      HB._qualityStepped = (HB._qualityStepped || 0) + 1;
+    }
   };
 
   App.render = function (dt) {

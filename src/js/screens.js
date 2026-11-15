@@ -55,21 +55,76 @@
 
   /* ---------------- Splash ---------------- */
   S.splash = {
-    enter: function () { this.t = 0; Audio.music('menu'); },
-    update: function (dt) { this.t += dt; if (this.t > 3.1) UI.go('home'); },
+    enter: function () { this.t = 0; this.phase = 'load'; Audio.music('menu'); },
+    update: function (dt) {
+      this.t += dt;
+      /* fake but honest loading: wait until the first frame has really painted,
+         then hold the logo long enough to read it */
+      if (this.phase === 'load' && this.t > 1.5) this.phase = 'ready';
+      if (this.phase === 'ready' && this.t > 4.2) UI.go('home');
+    },
     draw: function (g) {
-      UI.menuBackground(g);
       var w = HB.V.w, h = HB.V.h, cx = w / 2, t = this.t;
-      var sc = U.easeBack(U.clamp(t / 0.7, 0, 1));
-      g.save(); g.translate(cx, h * 0.38); g.scale(sc, sc);
-      Art.text(g, 'HEAD BALL', 0, -34, 74, C.gold, 'center', '900', { outline: C.ink, outlineW: 14, glow: C.orange, glowSize: 26 });
-      Art.text(g, '3', 0, 44, 88, C.paper, 'center', '900', { outline: C.ink, outlineW: 14 });
+      var st = Data.stadiums[0];
+      /* stadium backdrop, tilted like the original's loading art */
+      var bg = Art.buildBackground(st, HB.V, HB.Save.data.settings.quality);
+      g.save();
+      g.translate(0, 40); g.scale(1.04, 1.04);
+      Art.drawBackground(g, bg, HB.clock, st);
       g.restore();
-      Art.text(g, 'ARCADE FOOTBALL • 1v1 • LOCAL MULTIPLAYER', cx, h * 0.56, 17, C.cyan, 'center', '900');
-      bust(g, Data.character(Save.data.character), cx, h * 0.78, 170, { color: C.red });
-      var a = 0.5 + Math.sin(t * 3) * 0.35;
-      Art.text(g, 'TAP TO START', cx, h * 0.9, 20, U.alpha(C.paper, a), 'center', '900');
-      Art.text(g, 'v' + HB.VERSION + '  •  built for Android', cx, h - 24, 12, U.alpha(C.mist, 0.6), 'center', '800', { shadow: false });
+      g.fillStyle = 'rgba(6,14,32,0.55)'; g.fillRect(0, 0, w, h);
+      var vg = g.createRadialGradient(cx, h * 0.45, h * 0.2, cx, h * 0.5, w * 0.72);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(3,9,22,0.8)');
+      g.fillStyle = vg; g.fillRect(0, 0, w, h);
+
+      /* logo plate: a tapered banner with a ball crest */
+      var pop = U.easeBack(U.clamp(t / 0.6, 0, 1));
+      g.save(); g.translate(cx, h * 0.34); g.scale(pop, pop);
+      var plateW = Math.min(w * 0.62, 640), plateH = 150;
+      var pg = g.createLinearGradient(0, -plateH / 2, 0, plateH / 2);
+      pg.addColorStop(0, '#1d3d78'); pg.addColorStop(0.5, '#122a55'); pg.addColorStop(1, '#0a1a36');
+      Art.rr(g, -plateW / 2, -plateH / 2, plateW, plateH, 26); g.fillStyle = pg; g.fill();
+      g.lineWidth = 4; g.strokeStyle = U.alpha(C.gold, 0.85); g.stroke();
+      Art.text(g, 'HEAD BALL', 0, -16, 74, '#ffffff', 'center', '900', { outline: C.ink, outlineW: 12, glow: C.orange, glowSize: 22 });
+      Art.text(g, '3', 0, 44, 46, C.gold, 'center', '900', { outline: C.ink, outlineW: 8 });
+      /* spinning ball at the plate's shoulder */
+      g.save();
+      g.translate(plateW / 2 - 26, -plateH / 2 + 6); g.rotate(t * 2.4);
+      Art.ball(g, { x: 0, y: 0, r: 30, rot: 0, style: 'classicball' }, t);
+      g.restore();
+      g.restore();
+
+      /* loading bar */
+      var barW = Math.min(w * 0.5, 520), barX = cx - barW / 2, barY = h * 0.66;
+      var prog = this.phase === 'load' ? U.clamp(t / 1.5, 0, 1) : 1;
+      Art.fillRR(g, barX - 3, barY - 3, barW + 6, 26, 14, 'rgba(4,12,28,0.75)');
+      Art.fillRR(g, barX, barY, barW, 20, 10, 'rgba(255,255,255,0.12)');
+      var fg = g.createLinearGradient(barX, 0, barX + barW, 0);
+      fg.addColorStop(0, C.gold); fg.addColorStop(1, C.orange);
+      Art.fillRR(g, barX, barY, Math.max(4, barW * prog), 20, 10, fg);
+      /* moving sheen on the fill */
+      g.save(); Art.rr(g, barX, barY, Math.max(4, barW * prog), 20, 10); g.clip();
+      g.globalAlpha = 0.3; g.fillStyle = '#ffffff';
+      var shx = barX + ((t * 260) % (barW + 160)) - 80;
+      g.beginPath(); g.moveTo(shx, barY); g.lineTo(shx + 40, barY); g.lineTo(shx + 10, barY + 20); g.lineTo(shx - 30, barY + 20); g.closePath(); g.fill();
+      g.restore();
+      Art.text(g, this.phase === 'load' ? 'LOADING SQUAD…' : 'TAP TO PLAY', cx, barY + 46, 18,
+        U.alpha(C.paper, this.phase === 'load' ? 0.8 : 0.6 + Math.sin(t * 3.4) * 0.35), 'center', '900');
+
+      /* rotating gameplay tip, like the original's loading quips */
+      var tips = [
+        'Hold KICK to charge a high ball. Tap it to drill one along the floor.',
+        'Jump into a header at the top of your arc for a perfect strike.',
+        'Double-tap JUMP for a second, higher leap.',
+        'A save inside your own goal mouth is worth a highlight reel.',
+        'Powers charge as you touch the ball. Spend them before the whistle.'
+      ];
+      var tip = tips[Math.floor(t / 2.2) % tips.length];
+      Art.panel(g, cx - Math.min(w * 0.45, 430), h * 0.76, Math.min(w * 0.9, 860), 46, 16, { fill: 'rgba(9,20,42,0.72)', stroke: 'rgba(255,255,255,0.1)' });
+      Art.icon(g, 'info', cx - Math.min(w * 0.45, 430) + 26, h * 0.76 + 23, 18, C.cyan);
+      Art.text(g, tip, cx + 12, h * 0.76 + 23, 14, U.alpha(C.paper, 0.9), 'center', '800', { maxWidth: Math.min(w * 0.82, 780) });
+      Art.text(g, 'v' + HB.VERSION, cx, h - 22, 11, U.alpha(C.mist, 0.55), 'center', '800', { shadow: false });
+
       UI.region('splash.tap', { x: 0, y: 0, w: w, h: h }, function () { UI.go('home'); }, 'button');
     }
   };
@@ -84,79 +139,113 @@
       UI.menuBackground(g);
       var w = HB.V.w, h = HB.V.h, cx = w / 2;
       UI.profileBar(g);
-      Art.text(g, 'HEAD BALL 3', cx, 116, 30, C.gold, 'center', '900', { outline: 'rgba(0,0,0,0.3)', outlineW: 6 });
-      var panelW = Math.min(w - 100, 1080), px = (w - panelW) / 2;
-      Art.panel(g, px, 146, panelW, h - 246, 24, { fill: 'rgba(9,22,46,0.72)', stroke: 'rgba(255,255,255,0.12)', gradient: true, fill2: 'rgba(8,18,38,0.8)' });
-      var leftW = panelW * 0.42;
-      /* hero */
+
+      /* ---- hero card on the left: the face you actually play as ---- */
       var c = Data.character(Save.data.character);
-      Art.panel(g, px + 24, 172, leftW - 40, h - 300, 20, { fill: U.alpha(c.kit, 0.12), stroke: U.alpha(c.kit, 0.4) });
-      bust(g, c, px + leftW / 2 - 8, 340, 180, { color: c.kit });
-      Art.text(g, c.name, px + leftW / 2 - 8, 462, 22, C.paper, 'center', '900');
-      Art.text(g, Data.rarity(c).name.toUpperCase() + '  •  LV ' + Meta.charLevel(c.id), px + leftW / 2 - 8, 486, 13, Data.rarity(c).color, 'center', '900');
-      var st = Meta.charStats(c.id), bw = leftW - 90;
-      statBar(g, px + 45, 498, bw, 'SPEED', st.speed, C.cyan);
-      statBar(g, px + 45, 522, bw, 'JUMP', st.jump, C.teal);
-      statBar(g, px + 45, 546, bw, 'SHOT', st.shot, C.gold);
-      statBar(g, px + 45, 570, bw, 'SIZE', st.size, C.purple);
-      /* right side */
-      var rx = px + leftW + 4, rw = panelW - leftW - 36;
-      UI.button('home.play', { x: rx, y: 176, w: rw, h: 92 }, 'PLAY NOW', {
-        primary: true, color: C.gold, icon: 'play', iconSize: 42, fontSize: 24,
-        onClick: function () { UI.go('modes'); }
+      var cardW = Math.min(w * 0.26, 330), cardH = h - 210;
+      var cardX = 24, cardY = 96;
+      var cg = g.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+      cg.addColorStop(0, U.alpha(c.kit, 0.34)); cg.addColorStop(0.55, 'rgba(10,24,50,0.92)'); cg.addColorStop(1, 'rgba(8,18,38,0.96)');
+      Art.rr(g, cardX, cardY, cardW, cardH, 22); g.fillStyle = cg; g.fill();
+      g.lineWidth = 2.5; g.strokeStyle = U.alpha(c.kit, 0.75); g.stroke();
+      /* kit stripes behind the bust */
+      g.save(); Art.rr(g, cardX, cardY, cardW, cardH * 0.55, 22); g.clip();
+      g.globalAlpha = 0.12; g.fillStyle = '#ffffff';
+      for (var stp = -40; stp < cardW + 40; stp += 34) g.fillRect(cardX + stp, cardY, 14, cardH * 0.55);
+      g.restore();
+      /* the avatar is ~200 units tall from the ground line, so fit it to the
+         card and clip, otherwise the head floats over the profile bar */
+      var bustH = cardH * 0.44, bustS = bustH / 205;
+      var bustGround = cardY + cardH * 0.5;
+      g.save();
+      Art.rr(g, cardX + 2, cardY + 2, cardW - 4, cardH - 4, 20); g.clip();
+      g.translate(cardX + cardW / 2, bustGround); g.scale(bustS, bustS);
+      Art.character(g, c, { x: 0, y: 0, scale: 1, facing: 1, t: HB.clock, pose: 'idle', kit: c.kit, gear: Save.data.gear, sizeStat: c.size });
+      g.restore();
+      Art.text(g, c.shortName || c.name, cardX + cardW / 2, cardY + cardH * 0.56, 22, C.paper, 'center', '900', { maxWidth: cardW - 24 });
+      if (c.legend) Art.text(g, '★ LEGEND', cardX + cardW / 2, cardY + cardH * 0.56 + 22, 13, C.gold, 'center', '900');
+      var rst = Data.rarity(c);
+      Art.fillRR(g, cardX + cardW / 2 - 68, cardY + cardH * 0.56 + 34, 136, 24, 12, U.alpha(rst.color, 0.25));
+      Art.text(g, rst.name.toUpperCase() + '  LV ' + Meta.charLevel(c.id), cardX + cardW / 2, cardY + cardH * 0.56 + 46, 12, rst.color, 'center', '900', { shadow: false });
+      var mst = Meta.charStats(c.id), bx = cardX + 18, bw = cardW - 36, by = cardY + cardH * 0.56 + 66;
+      statBar(g, bx, by, bw, 'SPEED', mst.speed, C.cyan);
+      statBar(g, bx, by + 20, bw, 'JUMP', mst.jump, C.teal);
+      statBar(g, bx, by + 40, bw, 'SHOT', mst.shot, C.gold);
+      statBar(g, bx, by + 60, bw, 'SIZE', mst.size, C.purple);
+      UI.button('home.change', { x: cardX + 14, y: cardY + cardH - 52, w: cardW - 28, h: 38 }, 'CHANGE HERO', {
+        color: C.teal, fontSize: 13, onClick: function () { UI.go('locker'); }
       });
+
+      /* ---- centre: giant PLAY button, the arcade "insert coin" moment ---- */
+      var rx = cardX + cardW + 28, rw = w - rx - 24;
+      var playW = Math.min(rw * 0.86, 560), playX = rx + (rw - playW) / 2;
+      var playPulse = 1 + Math.sin(HB.clock * 2.6) * 0.012;
+      g.save();
+      g.translate(playX + playW / 2, 168);
+      g.scale(playPulse, playPulse);
+      var pressed = UI.isPressed('home.play');
+      var pgr = g.createLinearGradient(0, -52, 0, 52);
+      pgr.addColorStop(0, pressed ? '#ffe89a' : '#ffd75e'); pgr.addColorStop(0.5, '#ffbe23'); pgr.addColorStop(1, '#f08a00');
+      g.save(); g.shadowColor = 'rgba(255,170,40,0.55)'; g.shadowBlur = 26;
+      Art.rr(g, -playW / 2, -52, playW, 104, 26); g.fillStyle = pgr; g.fill();
+      g.restore();
+      g.lineWidth = 4; g.strokeStyle = '#fff3c4'; Art.rr(g, -playW / 2, -52, playW, 104, 26); g.stroke();
+      g.globalAlpha = 0.5; Art.icon(g, 'play', -playW * 0.3, 2, 46, C.ink); g.globalAlpha = 1;
+      Art.text(g, 'PLAY', 26, -6, 48, C.ink, 'center', '900', { shadow: false });
+      Art.text(g, 'QUICK MATCH', 26, 30, 15, U.alpha(C.ink, 0.72), 'center', '900', { shadow: false });
+      g.restore();
+      UI.region('home.play', { x: playX, y: 116, w: playW, h: 104 }, function () { UI.go('modes'); Audio.play('select'); }, 'button');
+
+      /* ---- mode tiles in a 2x2 grid ---- */
       var tiles = [
-        { id: 'quick', icon: 'ball', label: 'QUICK MATCH', sub: '90s vs a rival', color: C.blue },
-        { id: 'league', icon: 'trophy', label: 'LEAGUE', sub: 'Climb 5 divisions', color: C.gold },
-        { id: 'local', icon: 'users', label: '1v1 ON ONE PHONE', sub: 'Two players, one screen', color: C.teal },
-        { id: 'penalty', icon: 'target', label: 'PENALTY DUEL', sub: 'Nerve and precision', color: C.purple },
-        { id: 'tournament', icon: 'cup', label: 'TOURNAMENT', sub: '8-team knockout cup', color: C.orange },
-        { id: 'practice', icon: 'jersey', label: 'PRACTICE', sub: 'No pressure, no rewards', color: C.cyan }
+        { id: 'league', icon: 'trophy', label: 'LEAGUE', sub: 'Climb five divisions', color: C.gold },
+        { id: 'local', icon: 'users', label: '1v1 ONE PHONE', sub: 'Two players, one screen', color: C.teal },
+        { id: 'tournament', icon: 'cup', label: 'CUP', sub: 'Eight-team knockout', color: C.orange },
+        { id: 'penalty', icon: 'target', label: 'PENALTY DUEL', sub: 'Nerve and precision', color: C.purple }
       ];
-      var cols = 2, tw = (rw - 16) / cols, th = 82;
+      var gridY = 250, cols = 2, gap = 14;
+      var tw = (rw - gap) / cols, th = Math.min(96, (h - 300 - gridY + 250) / 2 - gap);
+      th = Math.max(74, Math.min(96, th));
       for (var i = 0; i < tiles.length; i++) {
-        var t = tiles[i], tx = rx + (i % cols) * (tw + 16), ty = 276 + Math.floor(i / cols) * (th + 8);
-        var r = { x: tx, y: ty, w: tw, h: th };
-        Art.fillRR(g, r.x, r.y, r.w, r.h, 16, U.alpha(t.color, UI.isPressed('home.tile.' + t.id) ? 0.38 : 0.16));
-        Art.icon(g, t.icon, r.x + 40, r.y + r.h / 2, 38, t.color);
-        Art.text(g, t.label, r.x + 74, r.y + 30, 15, C.paper, 'left', '900');
-        Art.text(g, t.sub, r.x + 74, r.y + 54, 12, U.alpha(C.mist, 0.8), 'left', '800', { shadow: false });
-        UI.region('home.tile.' + t.id, r, (function (id) { return function () { startMode(id); }; })(t.id), 'button');
+        var tl = tiles[i];
+        var tx = rx + (i % cols) * (tw + gap), ty = gridY + Math.floor(i / cols) * (th + gap);
+        var r = { x: tx, y: ty, w: tw, h: th }, down = UI.isPressed('home.tile.' + tl.id);
+        Art.rr(g, tx, ty + 3, tw, th, 18); g.fillStyle = U.alpha('#04101f', 0.5); g.fill();
+        var gr = g.createLinearGradient(tx, ty, tx, ty + th);
+        gr.addColorStop(0, U.alpha(tl.color, down ? 0.55 : 0.3)); gr.addColorStop(1, 'rgba(9,20,42,0.9)');
+        Art.rr(g, tx, ty, tw, th, 18); g.fillStyle = gr; g.fill();
+        g.lineWidth = 2; g.strokeStyle = U.alpha(tl.color, 0.6); g.stroke();
+        Art.circle(g, tx + 42, ty + th / 2, 26, U.alpha(tl.color, 0.22));
+        Art.icon(g, tl.icon, tx + 42, ty + th / 2, 30, tl.color);
+        Art.text(g, tl.label, tx + 78, ty + th / 2 - 11, 17, C.paper, 'left', '900', { maxWidth: tw - 92 });
+        Art.text(g, tl.sub, tx + 78, ty + th / 2 + 12, 12, U.alpha(C.mist, 0.9), 'left', '800', { shadow: false, maxWidth: tw - 92 });
+        UI.region('home.tile.' + tl.id, r, (function (id) { return function () { startMode(id); }; })(tl.id), 'button');
       }
-      /* daily gift */
-      var dr = { x: rx, y: 276 + 3 * (th + 8) + 6, w: rw, h: 56 };
-      var claimed = Save.data.daily.claimed === Meta.today();
-      Art.fillRR(g, dr.x, dr.y, dr.w, dr.h, 14, U.alpha(C.pink, claimed ? 0.08 : 0.2));
-      Art.icon(g, 'gift', dr.x + 34, dr.y + 28, 30, claimed ? C.mist : C.pink);
-      Art.text(g, claimed ? 'DAILY REWARD CLAIMED' : 'DAILY REWARD  •  DAY ' + Save.data.daily.streak, dr.x + 60, dr.y + 28, 15, claimed ? C.mist : C.paper, 'left', '900');
-      if (!claimed) UI.region('home.daily', dr, function () {
-        var r = Meta.claimDaily(); Save.data.daily.claimed = Meta.today(); Save.save(true);
-        Audio.play('coin'); UI.reveal('DAILY REWARD', [{ name: 'Coins', amount: r.coins, color: C.gold }, { name: 'Gems', amount: r.gems || 1, color: C.pink }]);
-      }, 'button');
+
+      /* ---- daily reward ribbon ---- */
+      var dr = { x: rx, y: gridY + 2 * (th + gap) + 4, w: rw, h: 58 };
+      if (dr.y + dr.h < h - 92) {
+        var claimed = Save.data.daily.claimed === Meta.today();
+        var dgr = g.createLinearGradient(dr.x, dr.y, dr.x + dr.w, dr.y);
+        dgr.addColorStop(0, U.alpha(C.pink, claimed ? 0.1 : 0.42)); dgr.addColorStop(1, U.alpha('#5a2a7a', 0.5));
+        Art.rr(g, dr.x, dr.y, dr.w, dr.h, 16); g.fillStyle = dgr; g.fill();
+        g.lineWidth = 2; g.strokeStyle = U.alpha(C.pink, claimed ? 0.2 : 0.7); g.stroke();
+        Art.icon(g, 'gift', dr.x + 34, dr.y + dr.h / 2, 30, claimed ? C.mist : '#ffffff');
+        Art.text(g, claimed ? 'DAILY REWARD CLAIMED' : 'DAILY REWARD READY', dr.x + 64, dr.y + 22, 15, claimed ? C.mist : C.paper, 'left', '900');
+        Art.text(g, claimed ? 'Come back tomorrow for a bigger one' : 'Day ' + Save.data.daily.streak + ' streak  •  tap to collect',
+          dr.x + 64, dr.y + 40, 12, U.alpha(C.paper, 0.72), 'left', '800', { shadow: false });
+        if (!claimed) {
+          Art.fillRR(g, dr.x + dr.w - 96, dr.y + dr.h / 2 - 14, 82, 28, 14, C.gold);
+          Art.text(g, 'CLAIM', dr.x + dr.w - 55, dr.y + dr.h / 2, 13, C.ink, 'center', '900', { shadow: false });
+          UI.region('home.daily', dr, function () {
+            var rw2 = Meta.claimDaily(); Save.data.daily.claimed = Meta.today(); Save.save(true);
+            Audio.play('coin'); UI.reveal('DAILY REWARD', [{ name: 'Coins', amount: rw2.coins, color: C.gold }, { name: 'Gems', amount: rw2.gems || 1, color: C.pink }]);
+          }, 'button');
+        }
+      }
       UI.nav(g);
     }
   };
-
-  /* ---------------- Mode selection / match launcher ---------------- */
-  function startMode(mode) {
-    var s = Save.data, ai = UI.diff;
-    var cfg = { mode: mode, ai: ai, stadium: Meta.stadium(), length: s.settings.matchLength, golden: s.settings.goldenGoal };
-    if (mode === 'quick') { cfg.opponent = U.pick(Data.characters.filter(function (c) { return c.id !== s.character; })); cfg.tutorial = !s.tutorialDone; }
-    else if (mode === 'practice') { cfg.opponent = U.pick(Data.characters); cfg.ai = 0; cfg.rewards = false; cfg.length = 120; }
-    else if (mode === 'league') { var lg = Data.leagues[s.league]; cfg.ai = U.clamp(lg.ai + Math.floor(s.bracket / 5), 0, 4); cfg.opponent = Meta.leagueOpponent(); }
-    else if (mode === 'local') { cfg.local = true; var pool = s.unlockedChars; cfg.opponent = Data.character(pool.length > 1 ? U.pick(pool.filter(function (i) { return i !== s.character; })) : s.character); }
-    else if (mode === 'penalty') { HB.App.startPenalty(cfg); return; }
-    else if (mode === 'tournament') {
-      var t = s.tournament;
-      if (!t || t.finished) { t = Meta.tournamentStart(); UI.go('tournament'); return; }
-      var opp = Meta.tournamentNextOpponent();
-      if (!opp) { UI.go('tournament'); return; }
-      cfg.opponent = Data.character(opp.char); cfg.ai = U.clamp(2 + t.round, 0, 4);
-      cfg.round = t.round; cfg.golden = true;
-    }
-    HB.App.startMatch(cfg);
-  }
-  UI.startMode = startMode;
 
   S.modes = {
     enter: function () { Audio.music('menu'); },
@@ -283,22 +372,38 @@
     },
     drawCharacters: function (g, px, cy, pw, chh) {
       var listW = pw * 0.62, detailW = pw - listW - 18;
-      var cols = 5, gap = 10, cw = (listW - 24 - (cols - 1) * gap) / cols, cardH = 116;
-      var rows = Math.ceil(Data.characters.length / cols), contentH = rows * (cardH + gap) + 20;
+      /* filter: everyone, or just the sixteen legends */
       var self = this;
-      UI.scroll('locker.scroll', { x: px, y: cy, w: listW, h: chh }, contentH, function (gg, top, bottom) {
+      if (this.onlyLegends == null) this.onlyLegends = false;
+      var pool = [];
+      for (var pz = 0; pz < Data.characters.length; pz++) if (!this.onlyLegends || Data.characters[pz].legend) pool.push(pz);
+      var chipW = 116, chipH = 30, chipsRight = px;
+      var chips = [{ id: 'all', label: 'ALL ' + Data.characters.length }, { id: 'legends', label: '★ LEGENDS' }];
+      for (var ci = 0; ci < chips.length; ci++) {
+        var cr = { x: chipsRight + ci * (chipW + 8), y: cy - 2, w: chipW, h: chipH };
+        var on = (chips[ci].id === 'legends') === !!this.onlyLegends;
+        Art.fillRR(g, cr.x, cr.y, cr.w, cr.h, 15, on ? U.alpha(C.gold, 0.85) : 'rgba(255,255,255,0.08)');
+        Art.text(g, chips[ci].label, cr.x + cr.w / 2, cr.y + cr.h / 2, 12, on ? C.ink : C.paper, 'center', '900', { shadow: false });
+        UI.region('locker.filter.' + chips[ci].id, cr, (function (only) { return function () { self.onlyLegends = only; UI.st('locker.scroll').off = 0; Audio.play('ui'); }; })(chips[ci].id === 'legends'), 'button');
+      }
+      var gridTop = cy + 34;
+      var cols = 5, gap = 10, cw = (listW - 24 - (cols - 1) * gap) / cols, cardH = 116;
+      var rows = Math.ceil(pool.length / cols), contentH = rows * (cardH + gap) + 20;
+      UI.scroll('locker.scroll', { x: px, y: gridTop - 6, w: listW, h: chh - 28 }, contentH, function (gg, top, bottom) {
         var r0 = Math.max(0, Math.floor(top / (cardH + gap)) - 1), r1 = Math.min(rows, Math.ceil(bottom / (cardH + gap)) + 1);
         for (var r = r0; r < r1; r++) {
           for (var c = 0; c < cols; c++) {
-            var idx = r * cols + c; if (idx >= Data.characters.length) break;
+            var pi = r * cols + c; if (pi >= pool.length) break;
+            var idx = pool[pi];
             var ch = Data.characters[idx], owned = Save.data.unlockedChars.indexOf(idx) >= 0;
-            var x = px + 12 + c * (cw + gap), y = cy + 10 + r * (cardH + gap);
+            var x = px + 12 + c * (cw + gap), y = gridTop + r * (cardH + gap);
             var sel = (self.selected == null ? Save.data.character : self.selected) === idx;
             var col = Data.rarity(ch).color;
             Art.fillRR(gg, x, y, cw, cardH, 12, sel ? U.alpha(col, 0.35) : 'rgba(255,255,255,0.055)');
             if (sel) { gg.strokeStyle = col; gg.lineWidth = 2; Art.rr(gg, x, y, cw, cardH, 12); gg.stroke(); }
+            if (ch.legend) { Art.fillRR(gg, x + 3, y + 3, cw - 6, cardH - 6, 10, U.alpha(C.gold, 0.1)); }
             bust(gg, ch, x + cw / 2, y + 48, 66, { color: col, gear: { hat: -1, glasses: -1, jersey: -1, boots: -1 } });
-            Art.text(gg, ch.name.split(' ')[0], x + cw / 2, y + 88, 12, C.paper, 'center', '900', { shadow: false, maxWidth: cw - 6 });
+            Art.text(gg, ch.shortName || ch.name.split(' ')[0], x + cw / 2, y + 88, 12, ch.legend ? C.gold : C.paper, 'center', '900', { shadow: false, maxWidth: cw - 6 });
             Art.text(gg, owned ? 'LV ' + Meta.charLevel(idx) : 'LOCKED', x + cw / 2, y + 104, 10, owned ? col : C.mist, 'center', '900', { shadow: false });
             if (!owned) lockedOverlay(gg, { x: x, y: y, w: cw, h: cardH }, null);
             UI.region('locker.ch.' + idx, { x: x, y: y, w: cw, h: cardH }, (function (id) { return function () { self.selected = id; Audio.play('select'); }; })(idx), 'button');
