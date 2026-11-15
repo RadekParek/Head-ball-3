@@ -640,6 +640,7 @@
   Match.prototype.goal = function (scorer) {
     var b = this.ball;
     this.state = 'goal'; this.goalTimer = 2.35; this.goalSide = scorer;
+    this.messageUntil = 0;                 /* never stack KICK OFF over GOAL! */
     var mult = this.ownerEffect('double_goal', scorer) ? 2 : 1;
     this.score[scorer] += mult;
     if (mult > 1) {
