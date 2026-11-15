@@ -1,0 +1,19 @@
+# Installed / generated artifacts
+node_modules/
+dist/
+screenshots/
+android/build/
+android/.sdk/
+android/local.properties
+
+# Signing material and built APKs
+*.apk
+*.apk.sha256
+*.keystore
+*.jks
+
+# Editor / OS noise
+.idea/
+*.iml
+.DS_Store
+npm-debug.log*

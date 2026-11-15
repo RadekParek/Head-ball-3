@@ -1,0 +1,21 @@
+{
+  "name": "head-ball-3",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Original arcade 1v1 head-football game, packaged as a dependency-free Android APK.",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "smoke": "node scripts/smoke.js",
+    "shot": "node scripts/screenshot.js",
+    "apk": "npm run build && bash android/build.sh",
+    "serve": "node scripts/serve.js",
+    "icon": "python3 scripts/make_icon.py"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.1.1",
+    "terser": "5.51.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
