@@ -17,3 +17,7 @@ android/local.properties
 *.iml
 .DS_Store
 npm-debug.log*
+
+# Python bytecode
+__pycache__/
+*.pyc
