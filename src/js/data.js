@@ -28,6 +28,82 @@
   ];
   Data.RARITY = RARITY;
 
+
+  /* ---------------- Football legends ----------------
+   * Sixteen real names with hand-drawn cartoon likenesses: haircut, beard,
+   * accessory and kit colours, never a photo. Each one has a signature
+   * personality in stats and an unlock price that matches their tier.
+   * `hair` indexes the style library in art.js, `beard` the facial-hair set,
+   * `accent` is a per-character trim colour used by the portrait renderer. */
+  var LEGENDS = [
+    { name: 'Cristiano Ronaldo', short: 'Ronaldo', nation: 'Portugal', tier: 4, price: 26000,
+      skin: '#e8b98d', hair: 9, hairColor: '#241a16', face: 1, beard: 0, kit: '#9c1b34',
+      eye: '#6b4a2a',
+      hairNote: 'quiff', speed: 95, jump: 99, shot: 98, size: 82 },
+    { name: 'Lionel Messi', short: 'Messi', nation: 'Argentina', tier: 4, price: 26000,
+      skin: '#e0a97f', hair: 1, hairColor: '#3a2418', face: 2, beard: 2, kit: '#6cb7e8',
+      eye: '#4a3524',
+      hairNote: 'short', speed: 94, jump: 82, shot: 99, size: 62 },
+    { name: 'Neymar Jr', short: 'Neymar', nation: 'Brazil', tier: 4, price: 24000,
+      skin: '#c98a5e', hair: 2, hairColor: '#c9973f', face: 1, beard: 1, kit: '#f2c521',
+      eye: '#4a3a24',
+      hairNote: 'spiky', speed: 96, jump: 88, shot: 92, size: 63 },
+    { name: 'Ronaldo Nazario', short: 'R9', nation: 'Brazil', tier: 4, price: 24000,
+      skin: '#b3764f', hair: 3, hairColor: '#1f1712', face: 3, beard: 0, kit: '#1f7a4c',
+      eye: '#3a2618',
+      hairNote: 'shaved-fringe', speed: 93, jump: 86, shot: 99, size: 88 },
+    { name: 'Zinedine Zidane', short: 'Zidane', nation: 'France', tier: 4, price: 22000,
+      skin: '#e6b78e', hair: 5, hairColor: '#59606b', face: 2, beard: 1, kit: '#1d3f8f',
+      eye: '#5a6b4a',
+      hairNote: 'bald', speed: 84, jump: 84, shot: 93, size: 92 },
+    { name: 'Ronaldinho', short: 'Ronaldinho', nation: 'Brazil', tier: 4, price: 22000,
+      skin: '#a8703f', hair: 4, hairColor: '#1b140f', face: 3, beard: 2, kit: '#152c6b',
+      eye: '#2a1c14',
+      hairNote: 'long', speed: 88, jump: 80, shot: 95, size: 80 },
+    { name: 'Kylian Mbappe', short: 'Mbappe', nation: 'France', tier: 3, price: 15000,
+      skin: '#8a5535', hair: 6, hairColor: '#141110', face: 0, beard: 0, kit: '#0b2b6b',
+      eye: '#241a14',
+      hairNote: 'buzz', speed: 99, jump: 92, shot: 91, size: 70 },
+    { name: 'Erling Haaland', short: 'Haaland', nation: 'Norway', tier: 3, price: 15000,
+      skin: '#f3d0ac', hair: 8, hairColor: '#d8b25c', face: 0, beard: 1, kit: '#6cabdd',
+      eye: '#3a5a8a',
+      hairNote: 'ponytail', speed: 88, jump: 97, shot: 97, size: 99 },
+    { name: 'Kevin De Bruyne', short: 'De Bruyne', nation: 'Belgium', tier: 3, price: 14000,
+      skin: '#f1cba4', hair: 7, hairColor: '#b8722a', face: 2, beard: 2, kit: '#c8102e',
+      eye: '#3f6b96',
+      hairNote: 'side-part', speed: 82, jump: 78, shot: 96, size: 76 },
+    { name: 'Mohamed Salah', short: 'Salah', nation: 'Egypt', tier: 3, price: 14000,
+      skin: '#c08a5c', hair: 1, hairColor: '#1a1210', face: 1, beard: 4, kit: '#e03131',
+      eye: '#2e2015',
+      hairNote: 'curly', speed: 94, jump: 84, shot: 90, size: 68 },
+    { name: 'Luka Modric', short: 'Modric', nation: 'Croatia', tier: 3, price: 13000,
+      skin: '#e3b18b', hair: 8, hairColor: '#c8a05c', face: 2, beard: 0, kit: '#f2f4f8',
+      eye: '#4a6b8a',
+      hairNote: 'long', speed: 83, jump: 76, shot: 88, size: 58 },
+    { name: 'Robert Lewandowski', short: 'Lewandowski', nation: 'Poland', tier: 2, price: 9000,
+      skin: '#eec5a0', hair: 7, hairColor: '#5b4128', face: 0, beard: 2, kit: '#e6e9f0',
+      eye: '#3f6b8a',
+      hairNote: 'short', speed: 84, jump: 90, shot: 94, size: 84 },
+    { name: 'Sergio Ramos', short: 'Ramos', nation: 'Spain', tier: 2, price: 9000,
+      skin: '#dda87e', hair: 8, hairColor: '#2a1d16', face: 3, beard: 3, kit: '#f4f6fb',
+      eye: '#3a2b1d',
+      hairNote: 'long', speed: 80, jump: 88, shot: 82, size: 86 },
+    { name: 'Manuel Neuer', short: 'Neuer', nation: 'Germany', tier: 2, price: 8000,
+      skin: '#f0c9a4', hair: 6, hairColor: '#4a3524', face: 1, beard: 1, kit: '#1f9c56',
+      eye: '#3f6b96',
+      hairNote: 'buzz', speed: 76, jump: 94, shot: 74, size: 90 },
+    { name: 'Alexia Putellas', short: 'Putellas', nation: 'Spain', tier: 2, price: 8000,
+      skin: '#e7b691', hair: 8, hairColor: '#3a231a', face: 2, beard: 0, kit: '#8f2242',
+      eye: '#3a2a1c',
+      hairNote: 'ponytail', speed: 86, jump: 82, shot: 89, size: 62 },
+    { name: 'Marta Vieira', short: 'Marta', nation: 'Brazil', tier: 2, price: 8000,
+      skin: '#a8703f', hair: 4, hairColor: '#1c1512', face: 2, beard: 0, kit: '#f2c521',
+      eye: '#2e2015',
+      hairNote: 'long', speed: 90, jump: 84, shot: 93, size: 60 }
+  ];
+  Data.legends = LEGENDS;
+  Data.legend = function (id) { return LEGENDS[id - 1000] || null; };
+
   /* 125 original characters, deterministic so unlock order never shifts. */
   (function buildCharacters() {
     var r = RNG('hb3-characters-v1'), list = [], used = {};
@@ -49,11 +125,24 @@
         price: RARITY[tier].price
       });
     }
+    /* legends go on the end with fixed ids so saved unlocks stay valid */
+    LEGENDS.forEach(function (L, k) {
+      list.push({
+        id: 1000 + k, name: L.name, shortName: L.short, tier: L.tier, nation: L.nation,
+        skin: L.skin, hair: L.hair, hairColor: L.hairColor, kit: L.kit,
+        face: L.face, beard: L.beard, legend: true, hairNote: L.hairNote,
+        speed: L.speed, jump: L.jump, shot: L.shot, size: L.size,
+        fans: 40000 + (5 - k) * 6500, price: L.price
+      });
+    });
     Data.characters = list;
   })();
 
   Data.randomName = function () { return U.pick(FIRST) + ' ' + U.pick(LAST); };
-  Data.character = function (id) { return Data.characters[id] || Data.characters[0]; };
+  Data.character = function (id) {
+    if (id >= 1000) return Data.characters[id - 1000 + 125] || Data.characters[0];
+    return Data.characters[id] || Data.characters[0];
+  };
   Data.rarity = function (c) { return RARITY[c.tier]; };
 
   /* ---------------- Gear ---------------- */

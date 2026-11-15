@@ -698,8 +698,10 @@
       };
       /* JUMP stays bottom-right, KICK sits above the LEFT button:
          a diagonal pair, so the two thumbs never fight for one spot. */
-      c.jump = { x: farX, y: topY, w: pad, h: pad };
+      /* KICK sits high and inboard, so stretching a thumb towards it never
+         brushes the direction pad underneath. */
       c.kick = { x: nearX, y: topY, w: pad, h: pad };
+      c.jump = { x: farX, y: topY, w: pad, h: pad };
       if (flip) { var t = c.left; c.left = c.right; c.right = t; t = c.jump; c.jump = c.kick; c.kick = t; }
       return c;
     }
@@ -707,7 +709,7 @@
     if (!this.local) {
       var pad = U.clamp(w * 0.083, 74, 104);
       var gap = Math.round(pad * 0.16);
-      var bottomY = h - pad - 20, topY = bottomY - pad - gap - 10;
+      var bottomY = h - pad - 20, topY = bottomY - pad - gap - 12;
       var c1 = cluster(24, 1, pad, topY, bottomY, gap);
       var pw = U.clamp(w * 0.05, 52, 64), pg = 10;
       var px = w / 2 - (pw * 3 + pg * 2) / 2, py = h - pw - 16;
@@ -716,7 +718,7 @@
         { x: px + pw + pg, y: py, w: pw, h: pw },
         { x: px + (pw + pg) * 2, y: py, w: pw, h: pw }
       ];
-      c1.pause = { x: w / 2 - 30, y: 12, w: 60, h: 46 };
+      c1.pause = { x: w - 74, y: 20, w: 56, h: 56 };
       out_init(c1);
       return [c1, null];
     }
@@ -731,7 +733,7 @@
     var midL = w / 2 - pwL / 2;
     left.powers = [{ x: midL - pwL - 8, y: pyL, w: pwL, h: pwL }, { x: midL + pwL + 8, y: pyL, w: pwL, h: pwL }];
     right.powers = [];
-    left.pause = { x: w / 2 - 26, y: 8, w: 52, h: 38 };
+    left.pause = { x: w - 70, y: 16, w: 52, h: 52 };
     out_init(left); out_init(right);
     return [left, right];
   };
@@ -914,9 +916,9 @@
   };
   Match.prototype.renderControls = function (g) {
     if (this.paused || this.finished) return;
-    var V = HB.V, shade = g.createLinearGradient(0, 420, 0, 720);
-    shade.addColorStop(0, 'rgba(4,12,28,0)'); shade.addColorStop(1, 'rgba(4,12,28,0.46)');
-    g.fillStyle = shade; g.fillRect(0, 420, V.w, 300);
+    var V = HB.V, shade = g.createLinearGradient(0, 386, 0, 720);
+    shade.addColorStop(0, 'rgba(4,12,28,0)'); shade.addColorStop(0.45, 'rgba(4,12,28,0.34)'); shade.addColorStop(1, 'rgba(4,12,28,0.62)');
+    g.fillStyle = shade; g.fillRect(0, 386, V.w, 334);
     var layout = this.layoutControls(), Input = HB.Input;
     function down(r) { return Input.pointersIn(r).length > 0; }
     for (var s = 0; s < 2; s++) {
@@ -952,7 +954,7 @@
   /* Round action button. `charge` (0..1) draws a filling ring while KICK is held. */
   Match.prototype.controlButton = function (g, r, label, icon, color, pressed, charge) {
     if (!r) return;
-    var a = pressed ? 0.98 : 0.82;
+    var a = pressed ? 1 : 0.92;
     var yy = pressed ? r.y + 3 : r.y;
     g.save(); g.globalAlpha = a;
     /* soft coloured halo so the button reads at a glance while your thumb is on it */
@@ -984,7 +986,7 @@
     if (!r) return;
     var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
     g.save();
-    g.globalAlpha = pressed ? 0.9 : 0.5;
+    g.globalAlpha = pressed ? 0.96 : 0.78;
     var gr = g.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
     gr.addColorStop(0, U.alpha('#ffffff', pressed ? 0.3 : 0.16)); gr.addColorStop(1, U.alpha(col, pressed ? 0.5 : 0.24));
     Art.rr(g, r.x, r.y, r.w, r.h, Math.min(r.h * 0.34, 26)); g.fillStyle = gr; g.fill();

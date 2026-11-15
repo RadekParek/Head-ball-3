@@ -283,22 +283,38 @@
     },
     drawCharacters: function (g, px, cy, pw, chh) {
       var listW = pw * 0.62, detailW = pw - listW - 18;
-      var cols = 5, gap = 10, cw = (listW - 24 - (cols - 1) * gap) / cols, cardH = 116;
-      var rows = Math.ceil(Data.characters.length / cols), contentH = rows * (cardH + gap) + 20;
+      /* filter: everyone, or just the sixteen legends */
       var self = this;
-      UI.scroll('locker.scroll', { x: px, y: cy, w: listW, h: chh }, contentH, function (gg, top, bottom) {
+      if (this.onlyLegends == null) this.onlyLegends = false;
+      var pool = [];
+      for (var pz = 0; pz < Data.characters.length; pz++) if (!this.onlyLegends || Data.characters[pz].legend) pool.push(pz);
+      var chipW = 132, chipH = 30;
+      var chips = [{ id: 'all', label: 'ALL ' + Data.characters.length }, { id: 'legends', label: '★ LEGENDS' }];
+      for (var ci = 0; ci < chips.length; ci++) {
+        var cr = { x: px + ci * (chipW + 8), y: cy - 38, w: chipW, h: chipH };
+        var on = (chips[ci].id === 'legends') === !!this.onlyLegends;
+        Art.fillRR(g, cr.x, cr.y, cr.w, cr.h, 15, on ? U.alpha(C.gold, 0.85) : 'rgba(255,255,255,0.08)');
+        Art.text(g, chips[ci].label, cr.x + cr.w / 2, cr.y + cr.h / 2, 12, on ? C.ink : C.paper, 'center', '900', { shadow: false });
+        UI.region('locker.filter.' + chips[ci].id, cr, (function (only) { return function () { self.onlyLegends = only; UI.st('locker.scroll').off = 0; Audio.play('ui'); }; })(chips[ci].id === 'legends'), 'button');
+      }
+      var gridTop = cy + 4;
+      var cols = 5, gap = 10, cw = (listW - 24 - (cols - 1) * gap) / cols, cardH = 116;
+      var rows = Math.ceil(pool.length / cols), contentH = rows * (cardH + gap) + 20;
+      UI.scroll('locker.scroll', { x: px, y: gridTop - 4, w: listW, h: chh - 2 }, contentH, function (gg, top, bottom) {
         var r0 = Math.max(0, Math.floor(top / (cardH + gap)) - 1), r1 = Math.min(rows, Math.ceil(bottom / (cardH + gap)) + 1);
         for (var r = r0; r < r1; r++) {
           for (var c = 0; c < cols; c++) {
-            var idx = r * cols + c; if (idx >= Data.characters.length) break;
+            var pi = r * cols + c; if (pi >= pool.length) break;
+            var idx = pool[pi];
             var ch = Data.characters[idx], owned = Save.data.unlockedChars.indexOf(idx) >= 0;
-            var x = px + 12 + c * (cw + gap), y = cy + 10 + r * (cardH + gap);
+            var x = px + 12 + c * (cw + gap), y = gridTop + r * (cardH + gap);
             var sel = (self.selected == null ? Save.data.character : self.selected) === idx;
             var col = Data.rarity(ch).color;
             Art.fillRR(gg, x, y, cw, cardH, 12, sel ? U.alpha(col, 0.35) : 'rgba(255,255,255,0.055)');
             if (sel) { gg.strokeStyle = col; gg.lineWidth = 2; Art.rr(gg, x, y, cw, cardH, 12); gg.stroke(); }
+            if (ch.legend) { Art.fillRR(gg, x + 3, y + 3, cw - 6, cardH - 6, 10, U.alpha(C.gold, 0.1)); }
             bust(gg, ch, x + cw / 2, y + 48, 66, { color: col, gear: { hat: -1, glasses: -1, jersey: -1, boots: -1 } });
-            Art.text(gg, ch.name.split(' ')[0], x + cw / 2, y + 88, 12, C.paper, 'center', '900', { shadow: false, maxWidth: cw - 6 });
+            Art.text(gg, ch.shortName || ch.name.split(' ')[0], x + cw / 2, y + 88, 12, ch.legend ? C.gold : C.paper, 'center', '900', { shadow: false, maxWidth: cw - 6 });
             Art.text(gg, owned ? 'LV ' + Meta.charLevel(idx) : 'LOCKED', x + cw / 2, y + 104, 10, owned ? col : C.mist, 'center', '900', { shadow: false });
             if (!owned) lockedOverlay(gg, { x: x, y: y, w: cw, h: cardH }, null);
             UI.region('locker.ch.' + idx, { x: x, y: y, w: cw, h: cardH }, (function (id) { return function () { self.selected = id; Audio.play('select'); }; })(idx), 'button');
