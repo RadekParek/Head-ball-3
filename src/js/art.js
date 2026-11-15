@@ -674,9 +674,12 @@
     var legA = pose === 'run' ? Math.sin(run) * 0.62 : pose === 'jump' ? -0.55 : 0;
     var legB = pose === 'run' ? -Math.sin(run) * 0.62 : pose === 'jump' ? 0.7 : 0;
     if (pose === 'kick') { legB = -1.25; legA = 0.3; }
+    if (pose === 'charge') { legB = 0.85; legA = -0.25; }
     if (pose === 'slide') { legA = -1.35; legB = -1.0; }
     if (pose === 'celebrate') { legA = -0.45; legB = 0.45; }
     var bob = pose === 'idle' ? Math.sin(t * 2.4) * 1.6 : pose === 'run' ? Math.abs(Math.sin(run)) * 3.2 : 0;
+    var lean = pose === 'charge' ? -0.12 : pose === 'kick' ? 0.1 : 0;
+    if (lean) bob += 0;
     var boot = HB.Data.gearItem(gear.boots);
 
     /* ---- ground shadow: always under the boots, shrinks with height ---- */
@@ -690,6 +693,7 @@
     g.save();
     g.translate(o.x || 0, (o.y || 0) + bob);
     g.scale(face * sc, sc);
+    if (lean) g.rotate(lean);
     if (o.alpha != null) g.globalAlpha *= o.alpha;
     if (o.ghost) g.globalAlpha *= 0.34;
 

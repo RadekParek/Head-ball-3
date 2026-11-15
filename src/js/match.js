@@ -246,6 +246,7 @@
     this.slow = U.damp(this.slow, 1, 3, dt);
     this.updateParticles(dt);
     if (this.shock && this.t - this.shock.t > 0.75) this.shock = null;
+    if (this.sparks) { for (var sk = this.sparks.length - 1; sk >= 0; sk--) if (this.t - this.sparks[sk].t > 0.22) this.sparks.splice(sk, 1); }
     if (this.ripples) { for (var ri = this.ripples.length - 1; ri >= 0; ri--) if (this.t - this.ripples[ri].t > 1.1) this.ripples.splice(ri, 1); }
     for (var i = this.effects.length - 1; i >= 0; i--) if (this.effects[i].until <= this.t) this.effects.splice(i, 1);
     /* One continuous clock from the opening whistle to the final whistle.
@@ -452,6 +453,15 @@
       if (Math.abs(p.vx) < 6) p.vx = 0;
     }
     if (p.slide > 0 && p.onGround) p.vx *= 0.995;
+    /* afterimages while dashing, kicked-up turf when turning hard */
+    if (p.slide > 0 && Math.abs(p.vx) > 300) {
+      this.sparks = this.sparks || [];
+      this.sparks.push({ x: p.x, y: p.y - 40, t: this.t, kit: p.kit, face: p.facing });
+      if (this.sparks.length > 14) this.sparks.shift();
+    }
+    if (p.onGround && Math.abs(p.vx) > 420 && Math.random() < 0.25) {
+      this.burst(p.x - p.facing * 12, p.y, 1, '#cfe6b4', 60);
+    }
     p.vy += PGRAV * d;
     p.x += p.vx * d; p.y += p.vy * d;
     if (p.y >= W.ground) {
@@ -460,7 +470,14 @@
     } else p.onGround = false;
     clampPlayer(p);
     p.runPhase += Math.abs(p.vx) * d * 0.035;
-    p.pose = p.stun > 0 ? 'hurt' : p.kickAnim > 0 ? 'kick' : p.slide > 0 ? 'slide' : !p.onGround ? 'jump' : Math.abs(p.vx) > 40 ? 'run' : 'idle';
+    p.pose = p.stun > 0 ? 'hurt' : p.kickAnim > 0 ? 'kick' : p.charging ? 'charge'
+      : p.slide > 0 ? 'slide' : !p.onGround ? 'jump' : Math.abs(p.vx) > 40 ? 'run' : 'idle';
+    /* charge shimmer: particles gather at the boot while the shot winds up */
+    if (p.charging === 'kick' && p.shotCharge > 0.25) {
+      if (Math.random() < 0.35) {
+        this.burst(p.x + p.facing * 22, p.y - 16, 1, p.shotCharge > 0.75 ? C.gold : C.cyan, 40);
+      }
+    }
   };
   Match.prototype.ballWalls = function (b, dt) {
     var gy = W.ground;
@@ -533,9 +550,12 @@
          within a post's width of the line it is a highlight-reel stop. */
       var ownGoalX = p.side === 0 ? 0 : W.w;
       var toGoal = Math.abs(b.x - ownGoalX);
-      var incoming = p.side === 0 ? (b.vx + p.vx * 0) < -60 : b.vx > 60;
-      var goalward = incoming || towards === false;
-      if (goalward && toGoal < 300 && Math.abs(b.vx) > 180) {
+      /* only a ball that was genuinely travelling at this goal counts: use the
+         pre-collision velocity, otherwise every clearance near your box
+         screamed SAVE! at you */
+      var incoming = p.side === 0 ? rvx < -150 : rvx > 150;
+      var fast = Math.abs(rvx) > 320;
+      if (incoming && fast && toGoal < 360) {
         this.stats[p.side].saves = (this.stats[p.side].saves || 0) + 1; p.energy = Math.min(100, p.energy + 8);
         var wasNear = b.x - nx * 18;           /* roughly where contact happened */
         if (toGoal < 86) {
@@ -813,6 +833,16 @@
         Art.circle(g, tr.x, tr.y, tr.r * f * 0.9, this.ball.glow || '#ffffff');
       }
       g.globalAlpha = 1;
+    }
+    /* dash afterimages */
+    if (this.sparks) {
+      for (i = 0; i < this.sparks.length; i++) {
+        var sp2 = this.sparks[i], spf = 1 - (this.t - sp2.t) / 0.22;
+        if (spf <= 0) continue;
+        g.save(); g.globalAlpha = spf * 0.3;
+        Art.character(g, this.players[0].char, { x: sp2.x, y: sp2.y + 40, scale: 1, facing: sp2.face, t: HB.clock, pose: 'run', kit: sp2.kit, gear: {} });
+        g.restore();
+      }
     }
     /* players behind / in front of ball */
     for (i = 0; i < 2; i++) this.drawPlayer(g, this.players[i]);
