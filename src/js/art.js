@@ -437,7 +437,7 @@
       g.beginPath(); g.arc(rp.x, rp.y, Math.max(1, 12 + rf * 90), 0, Math.PI * 2); g.stroke();
       g.globalAlpha = 1;
     }
-    g.restore();
+    g.restore();                             /* release the net clip */
     /* --- back stanchion --- */
     Art.fillRR(g, side === 0 ? x0 + gw - 7 : x0, top, 7, gh, 3, 'rgba(206,228,250,0.7)');
     /* net floor shadow so the ball sits in the goal, not on it */
@@ -447,6 +447,16 @@
     /* goal line */
     g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 3;
     g.beginPath(); g.moveTo(x0, gy + 2); g.lineTo(x0 + gw, gy + 2); g.stroke();
+    g.restore();                             /* close Art.goal's own save */
+  };
+
+  /* Posts, crossbar and flag are drawn AFTER the ball so a scored ball
+     visibly sits inside the goal instead of on top of the frame. */
+  Art.goalFront = function (g, side, gw, gh, accent, t, opts) {
+    opts = opts || {};
+    var gy = W.ground, w = W.w;
+    var x0 = side === 0 ? 0 : w - gw;
+    var top = gy - gh;
     /* crossbar + front post, thick and glossy like the arcade original */
     var bar = g.createLinearGradient(0, top - 14, 0, top + 5);
     bar.addColorStop(0, '#ffffff'); bar.addColorStop(0.45, '#eef5ff'); bar.addColorStop(0.75, '#c3d4e8'); bar.addColorStop(1, '#94aac6');
@@ -475,7 +485,6 @@
       Art.rr(g, x0, top, gw, gh, 5); g.stroke();
       g.globalAlpha = 1;
     }
-    g.restore();
   };
 
   function torsoPath(g, R) {

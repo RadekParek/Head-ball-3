@@ -197,7 +197,7 @@
   Match.prototype.part = function () {
     var p = this.particlePool.pop();
     if (!p) p = {};
-    p.life = 0; p.max = 1; p.x = 0; p.y = 0; p.vx = 0; p.vy = 0; p.size = 3; p.color = '#fff'; p.type = 0; p.rot = 0; p.vr = 0;
+    p.life = 0; p.max = 1; p.x = 0; p.y = 0; p.vx = 0; p.vy = 0; p.size = 3; p.color = '#fff'; p.type = 0; p.rot = 0; p.vr = 0; p.flutter = 0;
     this.particles.push(p);
     return p;
   };
@@ -212,13 +212,16 @@
     }
   };
   Match.prototype.confetti = function () {
-    var colors = [C.gold, C.red, C.blue, C.teal, C.pink, '#ffffff'];
-    for (var i = 0; i < 90; i++) {
+    var colors = [C.gold, C.red, C.blue, C.teal, C.pink, '#ffffff', C.orange];
+    var budget = HB.Save.data.settings.quality === 0 ? 60 : 150;
+    for (var i = 0; i < budget; i++) {
       var p = this.part();
-      p.x = U.rnd(0, W.w); p.y = U.rnd(-180, 320);
-      p.vx = U.rnd(-70, 70); p.vy = U.rnd(90, 260);
-      p.max = p.life = U.rnd(1.5, 3); p.size = U.rnd(4, 9);
-      p.color = U.pick(colors); p.type = 1; p.rot = U.rnd(0, 6); p.vr = U.rnd(-8, 8);
+      p.x = U.rnd(0, W.w); p.y = U.rnd(-260, 260);
+      p.vx = U.rnd(-110, 110); p.vy = U.rnd(110, 330);
+      p.max = p.life = U.rnd(1.8, 3.4); p.size = U.rnd(4, 11);
+      p.color = U.pick(colors); p.type = 1;
+      p.rot = U.rnd(0, 6); p.vr = U.rnd(-11, 11);
+      p.flutter = U.rnd(1.4, 3.6);        /* horizontal wobble */
     }
   };
   Match.prototype.updateParticles = function (dt) {
@@ -227,7 +230,9 @@
       var p = a[i];
       p.life -= dt;
       if (p.life <= 0) { a.splice(i, 1); if (this.particlePool.length < 260) this.particlePool.push(p); continue; }
-      p.vy += 620 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      p.vy += 620 * dt;
+      if (p.flutter) { p.x += Math.sin(p.life * p.flutter * 3.4) * 34 * dt; p.vx *= 1 - 0.9 * dt; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
     }
   };
 
@@ -240,6 +245,7 @@
     this.flash = U.damp(this.flash, 0, 7, dt);
     this.slow = U.damp(this.slow, 1, 3, dt);
     this.updateParticles(dt);
+    if (this.shock && this.t - this.shock.t > 0.75) this.shock = null;
     if (this.ripples) { for (var ri = this.ripples.length - 1; ri >= 0; ri--) if (this.t - this.ripples[ri].t > 1.1) this.ripples.splice(ri, 1); }
     for (var i = this.effects.length - 1; i >= 0; i--) if (this.effects[i].until <= this.t) this.effects.splice(i, 1);
     /* One continuous clock from the opening whistle to the final whistle.
@@ -624,9 +630,13 @@
        Record the entry point so the mesh can bulge and ripple from there. */
     this.netHit = { side: 1 - scorer, x: b.x, y: b.y, t: this.t, power: U.clamp(Math.abs(b.vx) / 900, 0.35, 1.6) };
     this.ripples = this.ripples || [];
-    Audio.play('goal'); Audio.cheer(1.6); Audio.setIntensity(1);
-    this.confetti(); this.shake = 12; this.flash = 0.75; this.slow = 0.35;
-    this.burst(b.x, b.y, 34, scorer === 0 ? C.red : C.blue, 420);
+    Audio.play('goal'); Audio.cheer(1.7); Audio.setIntensity(1);
+    this.confetti();
+    this.shake = 16; this.flash = 0.85; this.slow = 0.3;
+    this.burst(b.x, b.y, 46, scorer === 0 ? C.red : C.blue, 520);
+    this.burst(b.x, b.y, 18, '#ffffff', 300);
+    /* shockwave ring + shard burst at the moment of impact */
+    this.shock = { x: b.x, y: b.y, t: this.t, color: scorer === 0 ? C.red : C.blue };
     this.players[scorer].pose = 'celebrate';
     if (this.tutorialStep === 3) this.finishTutorial();
     if (this.goldenActive) { this.goalTimer = 2.1; }
@@ -808,14 +818,16 @@
     for (i = 0; i < 2; i++) this.drawPlayer(g, this.players[i]);
     /* A scored ball sits behind the front post, so it is drawn slightly
        darkened and clipped by the goal mouth for a real depth cue. */
-    var inNet = this.state === 'goal' && this.netHit;
-    if (inNet) {
+    var nfSide = this.state === 'goal' && this.netHit ? this.netHit.side : -1;
+    if (nfSide >= 0) {
+      /* behind the near post once it has crossed the line */
       g.save();
-      var nside = this.netHit.side, nx0 = nside === 0 ? 0 : W.w - W.goalW;
+      var nx0 = nfSide === 0 ? 0 : W.w - W.goalW;
       Art.rr(g, nx0, W.ground - W.goalH, W.goalW, W.goalH, 4); g.clip();
-      g.globalAlpha = 0.92;
       Art.ball(g, this.ball, HB.clock);
       g.restore();
+      Art.goalFront(g, nfSide, W.goalW * (this.goalBoost(nfSide) > 1 ? 1.25 : 1), W.goalH * this.goalBoost(nfSide),
+        nfSide === 0 ? C.red : C.blue, HB.clock, { glow: this.shielded(nfSide) ? C.cyan : null });
     } else {
       Art.ball(g, this.ball, HB.clock);
     }
@@ -825,6 +837,31 @@
       g.save(); g.globalAlpha = al; g.translate(pt.x, pt.y); g.rotate(pt.rot);
       if (pt.type === 1) { g.fillStyle = pt.color; g.fillRect(-pt.size / 2, -pt.size / 4, pt.size, pt.size * 0.55); }
       else Art.circle(g, 0, 0, pt.size * al, pt.color);
+      g.restore();
+    }
+    /* goal shockwave: two expanding rings plus radial speed lines */
+    if (this.shock) {
+      var shf = U.clamp((this.t - this.shock.t) / 0.75, 0, 1);
+      var sho = 1 - shf;
+      g.save();
+      g.globalAlpha = sho * 0.55;
+      g.strokeStyle = '#ffffff'; g.lineWidth = 10 * sho + 2;
+      g.beginPath(); g.arc(this.shock.x, this.shock.y, 40 + shf * 420, 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = sho * 0.3;
+      g.strokeStyle = this.shock.color; g.lineWidth = 22 * sho + 4;
+      g.beginPath(); g.arc(this.shock.x, this.shock.y, 10 + shf * 300, 0, Math.PI * 2); g.stroke();
+      /* speed lines radiating from the strike */
+      g.globalAlpha = sho * 0.5;
+      g.strokeStyle = '#ffffff'; g.lineCap = 'round';
+      for (var sl = 0; sl < 22; sl++) {
+        var sa2 = sl * Math.PI * 2 / 22 + 0.2;
+        var r0 = 60 + shf * 320, r1 = r0 + 90 * (1 - shf) + 20;
+        g.lineWidth = 5 * (1 - shf) + 1;
+        g.beginPath();
+        g.moveTo(this.shock.x + Math.cos(sa2) * r0, this.shock.y + Math.sin(sa2) * r0);
+        g.lineTo(this.shock.x + Math.cos(sa2) * r1, this.shock.y + Math.sin(sa2) * r1);
+        g.stroke();
+      }
       g.restore();
     }
     /* power auras */
