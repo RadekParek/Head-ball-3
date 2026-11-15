@@ -102,6 +102,10 @@
       }
     };
   }
+  /* Schema-driven merge. Known fields are validated against their default
+   * type; dictionary-style containers (achievements, cards, charLevels,
+   * powerLevels, missions.progress...) keep every saved key, because their
+   * defaults are empty objects and dropping them would erase progression. */
   function merge(base, loaded) {
     if (!loaded || typeof loaded !== 'object') return base;
     for (var k in base) if (Object.prototype.hasOwnProperty.call(base, k)) {
@@ -110,6 +114,11 @@
       if (Array.isArray(b)) { if (Array.isArray(l)) base[k] = l.slice(); }
       else if (typeof b === 'object') { base[k] = merge(b, l); }
       else if (typeof l === typeof b) base[k] = l;
+    }
+    for (var k2 in loaded) if (Object.prototype.hasOwnProperty.call(loaded, k2) &&
+        !Object.prototype.hasOwnProperty.call(base, k2)) {
+      var v = loaded[k2];
+      base[k2] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
     }
     return base;
   }

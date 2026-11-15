@@ -52,6 +52,7 @@
     this.score = [0, 0];
     this.time = this.length;
     this.state = 'kickoff';
+    this.started = false;
     this.countdown = 3.2;
     this.goalTimer = 0;
     this.goalSide = -1;
@@ -234,12 +235,24 @@
     this.slow = U.damp(this.slow, 1, 3, dt);
     this.updateParticles(dt);
     for (var i = this.effects.length - 1; i >= 0; i--) if (this.effects[i].until <= this.t) this.effects.splice(i, 1);
+    /* One continuous clock from the opening whistle to the final whistle.
+       Celebrations and kick-off resets burn match time just like the original
+       arcade game, so 90 seconds of match really last 90 seconds. */
+    if (this.started && !this.goldenActive) {
+      this.time = Math.max(0, this.time - dt);
+      if (this.time <= 0) {
+        if (this.score[0] === this.score[1] && this.golden) {
+          this.goldenActive = true; this.message = 'GOLDEN GOAL!'; this.messageUntil = this.t + 2;
+          Audio.play('whistle'); HB.toast('Golden goal - next goal wins!', 'info');
+        } else { this.end('time'); return; }
+      }
+    }
     if (this.state === 'kickoff') {
       this.countdown -= dt;
       var n = Math.ceil(this.countdown - 0.2);
       if (n !== this._lastCount && n > 0 && n <= 3) { this._lastCount = n; Audio.play('countdown'); }
       if (this.countdown <= 0) {
-        this.state = 'play'; Audio.play('go'); Audio.play('whistle');
+        this.state = 'play'; this.started = true; Audio.play('go'); Audio.play('whistle');
         this.message = this.goldenActive ? 'GOLDEN GOAL!' : 'KICK OFF!'; this.messageUntil = this.t + 1.1;
       }
     } else if (this.state === 'goal') {
@@ -250,16 +263,6 @@
         this.resetPositions(); this.kickoffSide = this.goalSide;
       }
     } else if (this.state === 'play') {
-      if (!this.goldenActive) {
-        this.time -= dt;
-        if (this.time <= 0) {
-          this.time = 0;
-          if (this.score[0] === this.score[1] && this.golden) {
-            this.goldenActive = true; this.message = 'GOLDEN GOAL!'; this.messageUntil = this.t + 2;
-            Audio.play('whistle'); HB.toast('Golden goal - next goal wins!', 'info');
-          } else { this.end('time'); return; }
-        }
-      }
       this.processInputs();
       this.acc += dt * this.slow;
       var steps = 0;

@@ -150,6 +150,27 @@ HB.Input.vibrate(20);
 ok(h.vibrated === 1, 'vibration routed to the native bridge');
 delete global.window.HBAndroid;
 
+section('progression survives a reload');
+HB.Save.data.cards[11] = 9; HB.Save.data.charLevels[11] = 3;
+HB.Save.data.powerLevels[2] = 2; HB.Save.data.achievements.first_win = true;
+const coinsBefore = HB.Save.data.coins;
+HB.Save.save(true); HB.Save.load();
+ok(HB.Save.data.cards[11] === 9, 'card counts persist');
+ok(HB.Save.data.charLevels[11] === 3, 'hero levels persist');
+ok(HB.Save.data.powerLevels[2] === 2, 'power levels persist');
+ok(HB.Save.data.achievements.first_win === true, 'achievements persist');
+ok(HB.Save.data.coins === coinsBefore, 'coins persist');
+
+section('match clock is wall-clock 90 s');
+HB.App.startMatch({ mode: 'quick', ai: 1, length: 90 });
+const cm = HB.App.match;
+for (let i = 0; i < 60 * 4; i++) cm.update(1 / 60);
+ok(cm.time > 88 && cm.time < 90.01, 'clock starts counting from the opening whistle (' + cm.time.toFixed(1) + ')');
+cm.time = 0.4; cm.score[0] = 3; cm.score[1] = 0; cm.golden = true;
+for (let i = 0; i < 60 * 2 && !cm.finished; i++) cm.update(1 / 60);
+ok(cm.finished && cm.result.reason === 'time', 'match ends when the clock expires');
+h.step(2);
+
 section('local 1v1 input isolation');
 HB.App.startMatch({ mode: 'local', local: true, ai: 1 });
 const lm2 = HB.App.match;
